@@ -1,0 +1,41 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: credit-service-test
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  flyway:
+    enabled: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+spring.cloud.aws:
+  region:
+    static: us-east-1
+  credentials:
+    access-key: test
+    secret-key: test
+  sns:
+    enabled: false
+  sqs:
+    enabled: false
+
+app:
+  notification:
+    topic-arn: arn:aws:sns:us-east-1:000000000000:credit-transactions
+  reconciliation:
+    cron: "-"
+    pending-timeout-minutes: 10
+  cache:
+    balance-ttl-minutes: 30

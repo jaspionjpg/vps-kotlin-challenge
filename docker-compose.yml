@@ -1,0 +1,96 @@
+version: "3.8"
+
+services:
+  vps-db:
+    image: postgres:15.3
+    container_name: vps-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker-compose/postgres-data:/var/lib/postgresql/data
+      - ./docker-compose/init/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  vps-redis:
+    image: redis:7-alpine
+    container_name: vps-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  localstack:
+    image: localstack/localstack:3.0
+    container_name: vps-localstack
+    environment:
+      - SERVICES=sns,sqs
+      - DEFAULT_REGION=us-east-1
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./docker-compose/init/localstack-init.sh:/etc/localstack/init/ready.d/init.sh
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  credit-service:
+    build:
+      context: ./credit-service
+      dockerfile: Dockerfile
+    container_name: credit-service
+    ports:
+      - "7200:7200"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://vps-db:5432/credit
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATA_REDIS_HOST: vps-redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_CLOUD_AWS_SNS_ENDPOINT: http://localstack:4566
+      SPRING_CLOUD_AWS_SQS_ENDPOINT: http://localstack:4566
+    depends_on:
+      vps-db:
+        condition: service_healthy
+      vps-redis:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  # communication-service:
+  #   build:
+  #     context: ./communication-service
+  #     dockerfile: Dockerfile
+  #   container_name: communication-service
+  #   ports:
+  #     - "7201:7201"
+  #   depends_on:
+  #     vps-db:
+  #       condition: service_healthy
+  #     localstack:
+  #       condition: service_healthy
+  #   networks:
+  #     - app-network
+
+networks:
+  app-network:
+    driver: bridge
