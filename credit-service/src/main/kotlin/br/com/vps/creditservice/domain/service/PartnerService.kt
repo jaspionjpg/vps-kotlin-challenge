@@ -10,7 +10,8 @@ import java.math.BigDecimal
 
 @Service
 class PartnerService(
-    private val partnerRepository: PartnerRepository
+    private val partnerRepository: PartnerRepository,
+    private val balanceCacheService: BalanceCacheService
 ) {
 
     @Transactional(readOnly = true)
@@ -24,7 +25,12 @@ class PartnerService(
             ?: throw PartnerNotFoundException(externalId)
 
     @Transactional(readOnly = true)
-    fun getBalance(partnerId: String): BigDecimal = findById(partnerId).balance
+    fun getBalance(partnerId: String): BigDecimal {
+        balanceCacheService.get(partnerId)?.let { return it }
+        val balance = findById(partnerId).balance
+        balanceCacheService.set(partnerId, balance)
+        return balance
+    }
 
     @Transactional
     fun createPartner(externalId: String, name: String): PartnerEntity {

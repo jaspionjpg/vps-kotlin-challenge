@@ -18,7 +18,8 @@ import java.time.OffsetDateTime
 @Service
 class TransactionService(
     private val transactionRepository: TransactionRepository,
-    private val partnerService: PartnerService
+    private val partnerService: PartnerService,
+    private val balanceCacheService: BalanceCacheService
 ) {
 
     private val log = LoggerFactory.getLogger(TransactionService::class.java)
@@ -50,6 +51,7 @@ class TransactionService(
             partner.updatedAt = OffsetDateTime.now()
             transaction.status = TransactionStatus.COMPLETED
             transaction.updatedAt = OffsetDateTime.now()
+            balanceCacheService.evict(partnerId)
             transactionRepository.save(transaction)
         } catch (e: Exception) {
             log.error("Failed to process credit for partner $partnerId", e)
@@ -91,6 +93,7 @@ class TransactionService(
             partner.updatedAt = OffsetDateTime.now()
             transaction.status = TransactionStatus.COMPLETED
             transaction.updatedAt = OffsetDateTime.now()
+            balanceCacheService.evict(partnerId)
             transactionRepository.save(transaction)
         } catch (e: Exception) {
             log.error("Failed to process debit for partner $partnerId", e)
