@@ -48,7 +48,10 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-	testImplementation("com.h2database:h2")
+	testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+	testImplementation("org.springframework.boot:spring-boot-testcontainers")
+	testImplementation("org.testcontainers:postgresql:1.20.4")
+	testImplementation("org.testcontainers:junit-jupiter:1.20.4")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -64,6 +67,18 @@ allOpen {
 	annotation("jakarta.persistence.Embeddable")
 }
 
-tasks.withType<Test> {
-	useJUnitPlatform()
+tasks.named<Test>("test") {
+	useJUnitPlatform {
+		excludeTags("integration")
+	}
+}
+
+tasks.register<Test>("integrationTest") {
+	useJUnitPlatform {
+		includeTags("integration")
+	}
+	testClassesDirs = sourceSets["test"].output.classesDirs
+	classpath = sourceSets["test"].runtimeClasspath
+	description = "Runs integration tests (requires Docker)"
+	group = "verification"
 }

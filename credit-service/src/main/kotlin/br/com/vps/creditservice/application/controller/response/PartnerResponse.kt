@@ -3,9 +3,10 @@ package br.com.vps.creditservice.application.controller.response
 import br.com.vps.creditservice.resource.model.PartnerEntity
 import java.math.BigDecimal
 import java.time.OffsetDateTime
+import java.util.UUID
 
 data class PartnerResponse(
-    val id: String,
+    val id: UUID?,
     val externalId: String,
     val name: String,
     val balance: BigDecimal,

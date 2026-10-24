@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.time.Duration
+import java.util.UUID
 
 @Service
 class BalanceCacheService(
@@ -19,7 +20,7 @@ class BalanceCacheService(
         private const val KEY_PREFIX = "partner:balance:"
     }
 
-    fun get(partnerId: String): BigDecimal? {
+    fun get(partnerId: UUID): BigDecimal? {
         return try {
             redisTemplate.opsForValue().get("$KEY_PREFIX$partnerId")?.let { BigDecimal(it) }
         } catch (e: Exception) {
@@ -28,7 +29,7 @@ class BalanceCacheService(
         }
     }
 
-    fun set(partnerId: String, balance: BigDecimal) {
+    fun set(partnerId: UUID, balance: BigDecimal) {
         try {
             redisTemplate.opsForValue().set("$KEY_PREFIX$partnerId", balance.toPlainString(), ttl)
         } catch (e: Exception) {
@@ -36,7 +37,7 @@ class BalanceCacheService(
         }
     }
 
-    fun evict(partnerId: String) {
+    fun evict(partnerId: UUID) {
         try {
             redisTemplate.delete("$KEY_PREFIX$partnerId")
         } catch (e: Exception) {

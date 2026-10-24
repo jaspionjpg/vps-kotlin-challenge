@@ -26,10 +26,10 @@ class TransactionEntity(
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    val id: String = UUID.randomUUID().toString(),
+    val id: UUID? = null,
 
     @Column(nullable = false)
-    val partnerId: String,
+    val partnerId: UUID,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

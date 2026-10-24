@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.util.UUID
 
 @RestController
 @RequestMapping("/partners/{partnerId}/transactions")
@@ -31,7 +32,7 @@ class CreditController(
     @PostMapping("/credit")
     @Operation(summary = "Add credits to a partner")
     fun addCredit(
-        @PathVariable partnerId: String,
+        @PathVariable partnerId: UUID,
         @RequestHeader("Idempotency-Key") @Parameter(description = "Unique key to prevent duplicate transactions") idempotencyKey: String,
         @Valid @RequestBody request: CreditRequest
     ): ResponseEntity<TransactionResponse> =
@@ -46,7 +47,7 @@ class CreditController(
     @PostMapping("/debit")
     @Operation(summary = "Consume credits from a partner")
     fun consumeCredit(
-        @PathVariable partnerId: String,
+        @PathVariable partnerId: UUID,
         @RequestHeader("Idempotency-Key") @Parameter(description = "Unique key to prevent duplicate transactions") idempotencyKey: String,
         @Valid @RequestBody request: DebitRequest
     ): ResponseEntity<TransactionResponse> =
@@ -61,7 +62,7 @@ class CreditController(
     @GetMapping
     @Operation(summary = "Get transaction history for a partner")
     fun getTransactionHistory(
-        @PathVariable partnerId: String,
+        @PathVariable partnerId: UUID,
         @PageableDefault(size = 20, sort = ["createdAt"]) pageable: Pageable
     ): ResponseEntity<Page<TransactionResponse>> =
         ResponseEntity.ok(
@@ -71,8 +72,8 @@ class CreditController(
     @GetMapping("/{transactionId}")
     @Operation(summary = "Get transaction details")
     fun getTransaction(
-        @PathVariable partnerId: String,
-        @PathVariable transactionId: String
+        @PathVariable partnerId: UUID,
+        @PathVariable transactionId: UUID
     ): ResponseEntity<TransactionResponse> =
         ResponseEntity.ok(TransactionResponse.from(transactionService.findById(transactionId)))
 }

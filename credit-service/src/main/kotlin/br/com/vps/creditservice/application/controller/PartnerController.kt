@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.util.UUID
 
 @RestController
 @RequestMapping("/partners")
@@ -32,11 +33,11 @@ class PartnerController(
 
     @GetMapping("/{partnerId}")
     @Operation(summary = "Get partner details")
-    fun getPartner(@PathVariable partnerId: String): ResponseEntity<PartnerResponse> =
+    fun getPartner(@PathVariable partnerId: UUID): ResponseEntity<PartnerResponse> =
         ResponseEntity.ok(PartnerResponse.from(partnerService.findById(partnerId)))
 
     @GetMapping("/{partnerId}/balance")
     @Operation(summary = "Get partner credit balance")
-    fun getBalance(@PathVariable partnerId: String): ResponseEntity<BalanceResponse> =
+    fun getBalance(@PathVariable partnerId: UUID): ResponseEntity<BalanceResponse> =
         ResponseEntity.ok(BalanceResponse(partnerId, partnerService.getBalance(partnerId)))
 }

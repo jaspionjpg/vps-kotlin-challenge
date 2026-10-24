@@ -9,11 +9,13 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import java.time.OffsetDateTime
 
-interface TransactionRepository : JpaRepository<TransactionEntity, String> {
+import java.util.UUID
+
+interface TransactionRepository : JpaRepository<TransactionEntity, UUID> {
 
     fun findByIdempotencyKey(idempotencyKey: String): TransactionEntity?
 
-    fun findByPartnerIdOrderByCreatedAtDesc(partnerId: String, pageable: Pageable): Page<TransactionEntity>
+    fun findByPartnerIdOrderByCreatedAtDesc(partnerId: UUID, pageable: Pageable): Page<TransactionEntity>
 
     @Query(
         "SELECT t FROM TransactionEntity t WHERE t.status = :status AND t.createdAt < :before"
