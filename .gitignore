@@ -17,6 +17,10 @@ out/
 docker-compose/postgres-data/
 docker-compose/redis-data/
 
+### Environment ###
+.env
+.env.*
+
 ### OS ###
 .DS_Store
 .Rhistory
