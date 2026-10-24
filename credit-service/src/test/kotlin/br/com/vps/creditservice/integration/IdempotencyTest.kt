@@ -5,7 +5,6 @@ import br.com.vps.creditservice.domain.service.BalanceCacheService
 import br.com.vps.creditservice.domain.service.PartnerService
 import br.com.vps.creditservice.domain.service.TransactionService
 import br.com.vps.creditservice.resource.messaging.NotificationPublisher
-import br.com.vps.creditservice.resource.model.TransactionStatus
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Tag
@@ -26,17 +25,19 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
-@SpringBootTest(properties = [
-    "spring.autoconfigure.exclude=" +
-        "io.awspring.cloud.autoconfigure.sns.SnsAutoConfiguration," +
-        "io.awspring.cloud.autoconfigure.sqs.SqsAutoConfiguration," +
-        "org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration," +
-        "org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration"
-])
+@SpringBootTest(
+    properties = [
+        "spring.autoconfigure.exclude=" +
+            "io.awspring.cloud.autoconfigure.sns.SnsAutoConfiguration," +
+            "io.awspring.cloud.autoconfigure.sqs.SqsAutoConfiguration," +
+            "org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration," +
+            "org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration",
+        "app.security.api-key=test-key",
+    ],
+)
 @Testcontainers
 @Tag("integration")
 class IdempotencyTest {
-
     companion object {
         @Container
         @ServiceConnection
@@ -80,10 +81,16 @@ class IdempotencyTest {
             transactionService.addCredit(partnerId, BigDecimal("100.00"), "Duplicate", "idem-credit-1")
         }
 
-        assertEquals(0, BigDecimal("100.00").compareTo(queryBalance(partnerId)),
-            "Balance should be 100 — second credit must not have been applied")
-        assertEquals(1, countTransactions("idem-credit-1"),
-            "Only one transaction record should exist")
+        assertEquals(
+            0,
+            BigDecimal("100.00").compareTo(queryBalance(partnerId)),
+            "Balance should be 100 — second credit must not have been applied",
+        )
+        assertEquals(
+            1,
+            countTransactions("idem-credit-1"),
+            "Only one transaction record should exist",
+        )
     }
 
     @Test
@@ -97,10 +104,16 @@ class IdempotencyTest {
             transactionService.consumeCredit(partnerId, BigDecimal("50.00"), "Duplicate", "idem-debit-1")
         }
 
-        assertEquals(0, BigDecimal("150.00").compareTo(queryBalance(partnerId)),
-            "Balance should be 150 — second debit must not have been applied")
-        assertEquals(1, countTransactions("idem-debit-1"),
-            "Only one transaction record should exist")
+        assertEquals(
+            0,
+            BigDecimal("150.00").compareTo(queryBalance(partnerId)),
+            "Balance should be 150 — second debit must not have been applied",
+        )
+        assertEquals(
+            1,
+            countTransactions("idem-debit-1"),
+            "Only one transaction record should exist",
+        )
     }
 
     @Test
@@ -136,11 +149,18 @@ class IdempotencyTest {
         val finalBalance = queryBalance(partnerId)
         val txCount = countTransactions(idempotencyKey)
 
-        assertTrue(successCount.get() <= 1,
-            "At most 1 thread should succeed, got ${successCount.get()}")
-        assertEquals(1, txCount,
-            "Exactly one transaction record should exist")
-        assertTrue(finalBalance.compareTo(BigDecimal("100.00")) <= 0,
-            "Balance should be at most 100, got $finalBalance")
+        assertTrue(
+            successCount.get() <= 1,
+            "At most 1 thread should succeed, got ${successCount.get()}",
+        )
+        assertEquals(
+            1,
+            txCount,
+            "Exactly one transaction record should exist",
+        )
+        assertTrue(
+            finalBalance.compareTo(BigDecimal("100.00")) <= 0,
+            "Balance should be at most 100, got $finalBalance",
+        )
     }
 }

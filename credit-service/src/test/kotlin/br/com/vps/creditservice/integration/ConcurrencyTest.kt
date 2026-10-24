@@ -23,17 +23,19 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
-@SpringBootTest(properties = [
-    "spring.autoconfigure.exclude=" +
-        "io.awspring.cloud.autoconfigure.sns.SnsAutoConfiguration," +
-        "io.awspring.cloud.autoconfigure.sqs.SqsAutoConfiguration," +
-        "org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration," +
-        "org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration"
-])
+@SpringBootTest(
+    properties = [
+        "spring.autoconfigure.exclude=" +
+            "io.awspring.cloud.autoconfigure.sns.SnsAutoConfiguration," +
+            "io.awspring.cloud.autoconfigure.sqs.SqsAutoConfiguration," +
+            "org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration," +
+            "org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration",
+        "app.security.api-key=test-key",
+    ],
+)
 @Testcontainers
 @Tag("integration")
 class ConcurrencyTest {
-
     companion object {
         @Container
         @ServiceConnection
@@ -79,7 +81,10 @@ class ConcurrencyTest {
                 try {
                     transactionService.addCredit(partnerId, creditAmount, "Concurrent credit $i", "cc-$partnerId-$i")
                     successCount.incrementAndGet()
-                } catch (_: Exception) { } finally { latch.countDown() }
+                } catch (_: Exception) {
+                } finally {
+                    latch.countDown()
+                }
             }
         }
 
@@ -88,8 +93,11 @@ class ConcurrencyTest {
 
         val finalBalance = queryBalance(partnerId)
         val expectedBalance = creditAmount.multiply(BigDecimal(successCount.get()))
-        assertEquals(0, expectedBalance.compareTo(finalBalance),
-            "Expected $expectedBalance but got $finalBalance after ${successCount.get()} successful credits")
+        assertEquals(
+            0,
+            expectedBalance.compareTo(finalBalance),
+            "Expected $expectedBalance but got $finalBalance after ${successCount.get()} successful credits",
+        )
     }
 
     @Test
@@ -108,7 +116,10 @@ class ConcurrencyTest {
                 try {
                     val result = transactionService.consumeCredit(partnerId, debitAmount, "Debit $i", "cd-$partnerId-$i")
                     if (result.status == TransactionStatus.COMPLETED) successCount.incrementAndGet()
-                } catch (_: Exception) { } finally { latch.countDown() }
+                } catch (_: Exception) {
+                } finally {
+                    latch.countDown()
+                }
             }
         }
 
@@ -139,7 +150,10 @@ class ConcurrencyTest {
                 try {
                     val r = transactionService.addCredit(partnerId, amount, "Credit $i", "mc-$partnerId-$i")
                     if (r.status == TransactionStatus.COMPLETED) creditSuccess.incrementAndGet()
-                } catch (_: Exception) { } finally { latch.countDown() }
+                } catch (_: Exception) {
+                } finally {
+                    latch.countDown()
+                }
             }
         }
         repeat(threadCount) { i ->
@@ -147,7 +161,10 @@ class ConcurrencyTest {
                 try {
                     val r = transactionService.consumeCredit(partnerId, amount, "Debit $i", "md-$partnerId-$i")
                     if (r.status == TransactionStatus.COMPLETED) debitSuccess.incrementAndGet()
-                } catch (_: Exception) { } finally { latch.countDown() }
+                } catch (_: Exception) {
+                } finally {
+                    latch.countDown()
+                }
             }
         }
 
@@ -155,12 +172,16 @@ class ConcurrencyTest {
         executor.shutdown()
 
         val finalBalance = queryBalance(partnerId)
-        val expectedBalance = BigDecimal("500.00")
-            .add(amount.multiply(BigDecimal(creditSuccess.get())))
-            .subtract(amount.multiply(BigDecimal(debitSuccess.get())))
+        val expectedBalance =
+            BigDecimal("500.00")
+                .add(amount.multiply(BigDecimal(creditSuccess.get())))
+                .subtract(amount.multiply(BigDecimal(debitSuccess.get())))
 
-        assertEquals(0, expectedBalance.compareTo(finalBalance),
-            "Expected $expectedBalance but got $finalBalance (credits: ${creditSuccess.get()}, debits: ${debitSuccess.get()})")
+        assertEquals(
+            0,
+            expectedBalance.compareTo(finalBalance),
+            "Expected $expectedBalance but got $finalBalance (credits: ${creditSuccess.get()}, debits: ${debitSuccess.get()})",
+        )
         assert(finalBalance >= BigDecimal.ZERO) { "Balance went negative: $finalBalance" }
     }
 }

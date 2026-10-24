@@ -5,11 +5,11 @@ import br.com.vps.creditservice.domain.exception.InsufficientBalanceException
 import br.com.vps.creditservice.domain.exception.InvalidAmountException
 import br.com.vps.creditservice.domain.exception.PartnerNotFoundException
 import br.com.vps.creditservice.domain.exception.TransactionNotFoundException
+import br.com.vps.creditservice.resource.messaging.NotificationPublisher
+import br.com.vps.creditservice.resource.messaging.TransactionEvent
 import br.com.vps.creditservice.resource.model.TransactionEntity
 import br.com.vps.creditservice.resource.model.TransactionStatus
 import br.com.vps.creditservice.resource.model.TransactionType
-import br.com.vps.creditservice.resource.messaging.NotificationPublisher
-import br.com.vps.creditservice.resource.messaging.TransactionEvent
 import br.com.vps.creditservice.resource.repositories.TransactionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
@@ -24,9 +24,8 @@ import java.util.UUID
 class TransactionService(
     private val transactionRepository: TransactionRepository,
     private val partnerService: PartnerService,
-    private val notificationPublisher: NotificationPublisher
+    private val notificationPublisher: NotificationPublisher,
 ) {
-
     private val log = LoggerFactory.getLogger(TransactionService::class.java)
 
     @Transactional
@@ -34,20 +33,21 @@ class TransactionService(
         partnerId: UUID,
         amount: BigDecimal,
         description: String,
-        idempotencyKey: String
+        idempotencyKey: String,
     ): TransactionEntity {
         validateAmount(amount)
         checkIdempotency(idempotencyKey)?.let { return it }
 
-        val transaction = transactionRepository.save(
-            TransactionEntity(
-                partnerId = partnerId,
-                type = TransactionType.CREDIT,
-                amount = amount,
-                description = description,
-                idempotencyKey = idempotencyKey
+        val transaction =
+            transactionRepository.save(
+                TransactionEntity(
+                    partnerId = partnerId,
+                    type = TransactionType.CREDIT,
+                    amount = amount,
+                    description = description,
+                    idempotencyKey = idempotencyKey,
+                ),
             )
-        )
 
         return try {
             partnerService.addBalance(partnerId, amount)
@@ -63,20 +63,21 @@ class TransactionService(
         partnerId: UUID,
         amount: BigDecimal,
         description: String,
-        idempotencyKey: String
+        idempotencyKey: String,
     ): TransactionEntity {
         validateAmount(amount)
         checkIdempotency(idempotencyKey)?.let { return it }
 
-        val transaction = transactionRepository.save(
-            TransactionEntity(
-                partnerId = partnerId,
-                type = TransactionType.DEBIT,
-                amount = amount,
-                description = description,
-                idempotencyKey = idempotencyKey
+        val transaction =
+            transactionRepository.save(
+                TransactionEntity(
+                    partnerId = partnerId,
+                    type = TransactionType.DEBIT,
+                    amount = amount,
+                    description = description,
+                    idempotencyKey = idempotencyKey,
+                ),
             )
-        )
 
         return try {
             partnerService.subtractBalance(partnerId, amount)
@@ -91,19 +92,25 @@ class TransactionService(
     }
 
     @Transactional(readOnly = true)
-    fun getTransactionHistory(partnerId: UUID, pageable: Pageable): Page<TransactionEntity> {
+    fun getTransactionHistory(
+        partnerId: UUID,
+        pageable: Pageable,
+    ): Page<TransactionEntity> {
         partnerService.findById(partnerId)
         return transactionRepository.findByPartnerIdOrderByCreatedAtDesc(partnerId, pageable)
     }
 
     @Transactional(readOnly = true)
     fun findById(transactionId: UUID): TransactionEntity =
-        transactionRepository.findById(transactionId)
+        transactionRepository
+            .findById(transactionId)
             .orElseThrow { TransactionNotFoundException(transactionId) }
 
     @Transactional(readOnly = true)
-    fun findPendingBefore(before: OffsetDateTime, pageable: Pageable): List<TransactionEntity> =
-        transactionRepository.findPendingBefore(TransactionStatus.PENDING, before, pageable)
+    fun findPendingBefore(
+        before: OffsetDateTime,
+        pageable: Pageable,
+    ): List<TransactionEntity> = transactionRepository.findPendingBefore(TransactionStatus.PENDING, before, pageable)
 
     @Transactional
     fun markCompleted(transaction: TransactionEntity): TransactionEntity {
@@ -113,7 +120,10 @@ class TransactionService(
     }
 
     @Transactional
-    fun markFailed(transaction: TransactionEntity, reason: String): TransactionEntity {
+    fun markFailed(
+        transaction: TransactionEntity,
+        reason: String,
+    ): TransactionEntity {
         transaction.status = TransactionStatus.FAILED
         transaction.failureReason = reason
         transaction.updatedAt = OffsetDateTime.now()
@@ -141,8 +151,8 @@ class TransactionService(
                 amount = transaction.amount,
                 status = transaction.status,
                 description = transaction.description,
-                timestamp = transaction.updatedAt
-            )
+                timestamp = transaction.updatedAt,
+            ),
         )
     }
 }

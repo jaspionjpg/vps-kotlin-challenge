@@ -11,16 +11,17 @@ data class PartnerResponse(
     val name: String,
     val balance: BigDecimal,
     val createdAt: OffsetDateTime,
-    val updatedAt: OffsetDateTime
+    val updatedAt: OffsetDateTime,
 ) {
     companion object {
-        fun from(entity: PartnerEntity) = PartnerResponse(
-            id = entity.id,
-            externalId = entity.externalId,
-            name = entity.name,
-            balance = entity.balance,
-            createdAt = entity.createdAt,
-            updatedAt = entity.updatedAt
-        )
+        fun from(entity: PartnerEntity) =
+            PartnerResponse(
+                id = entity.id,
+                externalId = entity.externalId,
+                name = entity.name,
+                balance = entity.balance,
+                createdAt = entity.createdAt,
+                updatedAt = entity.updatedAt,
+            )
     }
 }

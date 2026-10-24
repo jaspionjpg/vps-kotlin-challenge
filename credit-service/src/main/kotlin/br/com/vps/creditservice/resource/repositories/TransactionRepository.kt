@@ -8,21 +8,22 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import java.time.OffsetDateTime
-
 import java.util.UUID
 
 interface TransactionRepository : JpaRepository<TransactionEntity, UUID> {
-
     fun findByIdempotencyKey(idempotencyKey: String): TransactionEntity?
 
-    fun findByPartnerIdOrderByCreatedAtDesc(partnerId: UUID, pageable: Pageable): Page<TransactionEntity>
+    fun findByPartnerIdOrderByCreatedAtDesc(
+        partnerId: UUID,
+        pageable: Pageable,
+    ): Page<TransactionEntity>
 
     @Query(
-        "SELECT t FROM TransactionEntity t WHERE t.status = :status AND t.createdAt < :before ORDER BY t.createdAt ASC"
+        "SELECT t FROM TransactionEntity t WHERE t.status = :status AND t.createdAt < :before ORDER BY t.createdAt ASC",
     )
     fun findPendingBefore(
         @Param("status") status: TransactionStatus,
         @Param("before") before: OffsetDateTime,
-        pageable: Pageable
+        pageable: Pageable,
     ): List<TransactionEntity>
 }

@@ -8,5 +8,5 @@ data class DebitRequest(
     @field:DecimalMin(value = "0.01", message = "Amount must be greater than zero")
     val amount: BigDecimal,
     @field:NotBlank
-    val description: String
+    val description: String,
 )

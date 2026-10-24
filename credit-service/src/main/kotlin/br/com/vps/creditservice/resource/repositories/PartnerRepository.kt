@@ -9,20 +9,25 @@ import java.math.BigDecimal
 import java.util.UUID
 
 interface PartnerRepository : JpaRepository<PartnerEntity, UUID> {
-
     fun findByExternalId(externalId: String): PartnerEntity?
 
     @Modifying
     @Query(
         "UPDATE partner SET balance = balance + :amount, updated_at = NOW() WHERE id = :id",
-        nativeQuery = true
+        nativeQuery = true,
     )
-    fun addBalance(@Param("id") id: UUID, @Param("amount") amount: BigDecimal): Int
+    fun addBalance(
+        @Param("id") id: UUID,
+        @Param("amount") amount: BigDecimal,
+    ): Int
 
     @Modifying
     @Query(
         "UPDATE partner SET balance = balance - :amount, updated_at = NOW() WHERE id = :id AND balance >= :amount",
-        nativeQuery = true
+        nativeQuery = true,
     )
-    fun subtractBalance(@Param("id") id: UUID, @Param("amount") amount: BigDecimal): Int
+    fun subtractBalance(
+        @Param("id") id: UUID,
+        @Param("amount") amount: BigDecimal,
+    ): Int
 }

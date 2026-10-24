@@ -6,5 +6,5 @@ data class CreatePartnerRequest(
     @field:NotBlank
     val externalId: String,
     @field:NotBlank
-    val name: String
+    val name: String,
 )

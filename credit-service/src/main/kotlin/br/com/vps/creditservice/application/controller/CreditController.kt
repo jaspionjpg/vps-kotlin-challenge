@@ -26,22 +26,21 @@ import java.util.UUID
 @RequestMapping("/partners/{partnerId}/transactions")
 @Tag(name = "Transactions", description = "Credit and debit transaction endpoints")
 class CreditController(
-    private val transactionService: TransactionService
+    private val transactionService: TransactionService,
 ) {
-
     @PostMapping("/credit")
     @Operation(summary = "Add credits to a partner")
     fun addCredit(
         @PathVariable partnerId: UUID,
         @RequestHeader("Idempotency-Key") @Parameter(description = "Unique key to prevent duplicate transactions") idempotencyKey: String,
-        @Valid @RequestBody request: CreditRequest
+        @Valid @RequestBody request: CreditRequest,
     ): ResponseEntity<TransactionResponse> =
         ResponseEntity
             .status(HttpStatus.CREATED)
             .body(
                 TransactionResponse.from(
-                    transactionService.addCredit(partnerId, request.amount, request.description, idempotencyKey)
-                )
+                    transactionService.addCredit(partnerId, request.amount, request.description, idempotencyKey),
+                ),
             )
 
     @PostMapping("/debit")
@@ -49,31 +48,30 @@ class CreditController(
     fun consumeCredit(
         @PathVariable partnerId: UUID,
         @RequestHeader("Idempotency-Key") @Parameter(description = "Unique key to prevent duplicate transactions") idempotencyKey: String,
-        @Valid @RequestBody request: DebitRequest
+        @Valid @RequestBody request: DebitRequest,
     ): ResponseEntity<TransactionResponse> =
         ResponseEntity
             .status(HttpStatus.CREATED)
             .body(
                 TransactionResponse.from(
-                    transactionService.consumeCredit(partnerId, request.amount, request.description, idempotencyKey)
-                )
+                    transactionService.consumeCredit(partnerId, request.amount, request.description, idempotencyKey),
+                ),
             )
 
     @GetMapping
     @Operation(summary = "Get transaction history for a partner")
     fun getTransactionHistory(
         @PathVariable partnerId: UUID,
-        @PageableDefault(size = 20, sort = ["createdAt"]) pageable: Pageable
+        @PageableDefault(size = 20, sort = ["createdAt"]) pageable: Pageable,
     ): ResponseEntity<Page<TransactionResponse>> =
         ResponseEntity.ok(
-            transactionService.getTransactionHistory(partnerId, pageable).map { TransactionResponse.from(it) }
+            transactionService.getTransactionHistory(partnerId, pageable).map { TransactionResponse.from(it) },
         )
 
     @GetMapping("/{transactionId}")
     @Operation(summary = "Get transaction details")
     fun getTransaction(
         @PathVariable partnerId: UUID,
-        @PathVariable transactionId: UUID
-    ): ResponseEntity<TransactionResponse> =
-        ResponseEntity.ok(TransactionResponse.from(transactionService.findById(transactionId)))
+        @PathVariable transactionId: UUID,
+    ): ResponseEntity<TransactionResponse> = ResponseEntity.ok(TransactionResponse.from(transactionService.findById(transactionId)))
 }

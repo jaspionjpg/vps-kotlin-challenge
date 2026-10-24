@@ -4,8 +4,8 @@ import br.com.vps.creditservice.domain.exception.InsufficientBalanceException
 import br.com.vps.creditservice.domain.exception.PartnerNotFoundException
 import br.com.vps.creditservice.resource.model.TransactionEntity
 import br.com.vps.creditservice.resource.model.TransactionType
-import org.slf4j.LoggerFactory
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.PageRequest
 import org.springframework.scheduling.annotation.Scheduled
@@ -16,9 +16,8 @@ import java.time.OffsetDateTime
 @Service
 class ReconciliationService(
     private val transactionService: TransactionService,
-    private val partnerService: PartnerService
+    private val partnerService: PartnerService,
 ) {
-
     private val log = LoggerFactory.getLogger(ReconciliationService::class.java)
 
     @Value("\${app.reconciliation.pending-timeout-minutes}")

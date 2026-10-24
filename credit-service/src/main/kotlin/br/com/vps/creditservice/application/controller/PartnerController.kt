@@ -21,23 +21,26 @@ import java.util.UUID
 @RequestMapping("/partners")
 @Tag(name = "Partners", description = "Partner management endpoints")
 class PartnerController(
-    private val partnerService: PartnerService
+    private val partnerService: PartnerService,
 ) {
-
     @PostMapping
     @Operation(summary = "Create a new partner")
-    fun createPartner(@Valid @RequestBody request: CreatePartnerRequest): ResponseEntity<PartnerResponse> =
+    fun createPartner(
+        @Valid @RequestBody request: CreatePartnerRequest,
+    ): ResponseEntity<PartnerResponse> =
         ResponseEntity
             .status(HttpStatus.CREATED)
             .body(PartnerResponse.from(partnerService.createPartner(request.externalId, request.name)))
 
     @GetMapping("/{partnerId}")
     @Operation(summary = "Get partner details")
-    fun getPartner(@PathVariable partnerId: UUID): ResponseEntity<PartnerResponse> =
-        ResponseEntity.ok(PartnerResponse.from(partnerService.findById(partnerId)))
+    fun getPartner(
+        @PathVariable partnerId: UUID,
+    ): ResponseEntity<PartnerResponse> = ResponseEntity.ok(PartnerResponse.from(partnerService.findById(partnerId)))
 
     @GetMapping("/{partnerId}/balance")
     @Operation(summary = "Get partner credit balance")
-    fun getBalance(@PathVariable partnerId: UUID): ResponseEntity<BalanceResponse> =
-        ResponseEntity.ok(BalanceResponse(partnerId, partnerService.getBalance(partnerId)))
+    fun getBalance(
+        @PathVariable partnerId: UUID,
+    ): ResponseEntity<BalanceResponse> = ResponseEntity.ok(BalanceResponse(partnerId, partnerService.getBalance(partnerId)))
 }

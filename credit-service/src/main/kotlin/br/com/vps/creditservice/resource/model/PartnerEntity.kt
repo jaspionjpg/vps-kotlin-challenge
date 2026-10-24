@@ -13,23 +13,17 @@ import java.util.UUID
 @Entity
 @Table(name = "partner")
 class PartnerEntity(
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     val id: UUID? = null,
-
     @Column(nullable = false, unique = true)
     val externalId: String,
-
     @Column(nullable = false)
     val name: String,
-
     @Column(nullable = false, precision = 19, scale = 4)
     var balance: BigDecimal = BigDecimal.ZERO,
-
     @Column(nullable = false, updatable = false)
     val createdAt: OffsetDateTime = OffsetDateTime.now(),
-
     @Column(nullable = false)
-    var updatedAt: OffsetDateTime = OffsetDateTime.now()
+    var updatedAt: OffsetDateTime = OffsetDateTime.now(),
 )

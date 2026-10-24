@@ -12,8 +12,6 @@ import org.springframework.data.redis.connection.RedisConnectionFactory
 @ConditionalOnBean(RedisConnectionFactory::class)
 @EnableSchedulerLock(defaultLockAtMostFor = "10m")
 class ShedLockConfig {
-
     @Bean
-    fun lockProvider(connectionFactory: RedisConnectionFactory): LockProvider =
-        RedisLockProvider(connectionFactory)
+    fun lockProvider(connectionFactory: RedisConnectionFactory): LockProvider = RedisLockProvider(connectionFactory)
 }

@@ -5,5 +5,5 @@ import java.util.UUID
 
 data class BalanceResponse(
     val partnerId: UUID,
-    val balance: BigDecimal
+    val balance: BigDecimal,
 )
