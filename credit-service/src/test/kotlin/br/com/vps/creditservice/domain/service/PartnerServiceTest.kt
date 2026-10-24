@@ -2,6 +2,7 @@ package br.com.vps.creditservice.domain.service
 
 import br.com.vps.creditservice.domain.exception.InsufficientBalanceException
 import br.com.vps.creditservice.domain.exception.PartnerAlreadyExistsException
+import br.com.vps.creditservice.domain.exception.PartnerNotFoundByExternalIdException
 import br.com.vps.creditservice.domain.exception.PartnerNotFoundException
 import br.com.vps.creditservice.resource.model.PartnerEntity
 import br.com.vps.creditservice.resource.repositories.PartnerRepository
@@ -19,7 +20,6 @@ import java.util.Optional
 import java.util.UUID
 
 class PartnerServiceTest {
-
     private val partnerRepository: PartnerRepository = mock()
     private val balanceCacheService: BalanceCacheService = mock()
     private lateinit var partnerService: PartnerService
@@ -47,6 +47,25 @@ class PartnerServiceTest {
 
         assertThrows<PartnerNotFoundException> {
             partnerService.findById(partnerId)
+        }
+    }
+
+    @Test
+    fun `findByExternalId should return partner when exists`() {
+        val partner = PartnerEntity(externalId = "ext-1", name = "Partner 1")
+        whenever(partnerRepository.findByExternalId("ext-1")).thenReturn(partner)
+
+        val result = partnerService.findByExternalId("ext-1")
+
+        assertEquals("Partner 1", result.name)
+    }
+
+    @Test
+    fun `findByExternalId should throw PartnerNotFoundByExternalIdException when not exists`() {
+        whenever(partnerRepository.findByExternalId("missing")).thenReturn(null)
+
+        assertThrows<PartnerNotFoundByExternalIdException> {
+            partnerService.findByExternalId("missing")
         }
     }
 

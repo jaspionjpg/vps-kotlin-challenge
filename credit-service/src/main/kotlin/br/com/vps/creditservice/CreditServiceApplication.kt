@@ -9,5 +9,5 @@ import org.springframework.scheduling.annotation.EnableScheduling
 class CreditServiceApplication
 
 fun main(args: Array<String>) {
-	runApplication<CreditServiceApplication>(*args)
+    runApplication<CreditServiceApplication>(*args)
 }

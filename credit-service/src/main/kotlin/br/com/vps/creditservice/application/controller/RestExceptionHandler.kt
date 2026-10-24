@@ -17,55 +17,69 @@ import org.springframework.web.context.request.WebRequest
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @ControllerAdvice
 class RestExceptionHandler {
-
     private val log = LoggerFactory.getLogger(RestExceptionHandler::class.java)
 
     @ExceptionHandler(ApiException::class)
-    fun handleApiException(ex: ApiException, request: WebRequest): ResponseEntity<GenericErrorResponse> {
-        val response = GenericErrorResponse(
-            status = ex.httpStatus.value(),
-            error = ex::class.java.simpleName,
-            message = ex.message,
-            path = extractPath(request)
-        )
+    fun handleApiException(
+        ex: ApiException,
+        request: WebRequest,
+    ): ResponseEntity<GenericErrorResponse> {
+        val response =
+            GenericErrorResponse(
+                status = ex.httpStatus.value(),
+                error = ex::class.java.simpleName,
+                message = ex.message,
+                path = extractPath(request),
+            )
         return ResponseEntity(response, ex.httpStatus)
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
-    fun handleValidation(ex: MethodArgumentNotValidException, request: WebRequest): ResponseEntity<GenericErrorResponse> {
+    fun handleValidation(
+        ex: MethodArgumentNotValidException,
+        request: WebRequest,
+    ): ResponseEntity<GenericErrorResponse> {
         val message = ex.bindingResult.fieldErrors.joinToString("; ") { "${it.field}: ${it.defaultMessage}" }
-        val response = GenericErrorResponse(
-            status = HttpStatus.BAD_REQUEST.value(),
-            error = "ValidationError",
-            message = message,
-            path = extractPath(request)
-        )
+        val response =
+            GenericErrorResponse(
+                status = HttpStatus.BAD_REQUEST.value(),
+                error = "ValidationError",
+                message = message,
+                path = extractPath(request),
+            )
         return ResponseEntity(response, HttpStatus.BAD_REQUEST)
     }
 
     @ExceptionHandler(MissingRequestHeaderException::class)
-    fun handleMissingHeader(ex: MissingRequestHeaderException, request: WebRequest): ResponseEntity<GenericErrorResponse> {
-        val response = GenericErrorResponse(
-            status = HttpStatus.BAD_REQUEST.value(),
-            error = "MissingHeader",
-            message = ex.message,
-            path = extractPath(request)
-        )
+    fun handleMissingHeader(
+        ex: MissingRequestHeaderException,
+        request: WebRequest,
+    ): ResponseEntity<GenericErrorResponse> {
+        val response =
+            GenericErrorResponse(
+                status = HttpStatus.BAD_REQUEST.value(),
+                error = "MissingHeader",
+                message = ex.message,
+                path = extractPath(request),
+            )
         return ResponseEntity(response, HttpStatus.BAD_REQUEST)
     }
 
     @ExceptionHandler(Exception::class)
-    fun handleGeneric(ex: Exception, request: WebRequest): ResponseEntity<GenericErrorResponse> {
+    fun handleGeneric(
+        ex: Exception,
+        request: WebRequest,
+    ): ResponseEntity<GenericErrorResponse> {
         log.error("Unexpected error", ex)
-        val response = GenericErrorResponse(
-            status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            error = "InternalServerError",
-            message = "An unexpected error occurred",
-            path = extractPath(request)
-        )
+        val response =
+            GenericErrorResponse(
+                status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                error = "InternalServerError",
+                message = "An unexpected error occurred",
+                path = extractPath(request),
+            )
         return ResponseEntity(response, HttpStatus.INTERNAL_SERVER_ERROR)
     }
 
-    private fun extractPath(request: WebRequest): String =
-        (request as? ServletWebRequest)?.request?.requestURI ?: ""
+    private fun extractPath(request: WebRequest): String = (request as? ServletWebRequest)?.request?.requestURI ?: ""
 }

@@ -14,12 +14,12 @@ import java.util.UUID
 @Service
 class PartnerService(
     private val partnerRepository: PartnerRepository,
-    private val balanceCacheService: BalanceCacheService
+    private val balanceCacheService: BalanceCacheService,
 ) {
-
     @Transactional(readOnly = true)
     fun findById(partnerId: UUID): PartnerEntity =
-        partnerRepository.findById(partnerId)
+        partnerRepository
+            .findById(partnerId)
             .orElseThrow { PartnerNotFoundException(partnerId) }
 
     @Transactional(readOnly = true)
@@ -36,24 +36,33 @@ class PartnerService(
     }
 
     @Transactional
-    fun createPartner(externalId: String, name: String): PartnerEntity {
+    fun createPartner(
+        externalId: String,
+        name: String,
+    ): PartnerEntity {
         partnerRepository.findByExternalId(externalId)?.let {
             throw PartnerAlreadyExistsException(externalId)
         }
         return partnerRepository.save(
-            PartnerEntity(externalId = externalId, name = name)
+            PartnerEntity(externalId = externalId, name = name),
         )
     }
 
     @Transactional
-    fun addBalance(partnerId: UUID, amount: BigDecimal) {
+    fun addBalance(
+        partnerId: UUID,
+        amount: BigDecimal,
+    ) {
         val rowsAffected = partnerRepository.addBalance(partnerId, amount)
         if (rowsAffected == 0) throw PartnerNotFoundException(partnerId)
         balanceCacheService.evict(partnerId)
     }
 
     @Transactional
-    fun subtractBalance(partnerId: UUID, amount: BigDecimal) {
+    fun subtractBalance(
+        partnerId: UUID,
+        amount: BigDecimal,
+    ) {
         val rowsAffected = partnerRepository.subtractBalance(partnerId, amount)
         if (rowsAffected == 0) {
             if (!partnerRepository.existsById(partnerId)) {

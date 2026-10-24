@@ -13,5 +13,5 @@ data class TransactionEvent(
     val amount: BigDecimal,
     val status: TransactionStatus,
     val description: String,
-    val timestamp: OffsetDateTime
+    val timestamp: OffsetDateTime,
 )

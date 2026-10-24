@@ -4,6 +4,7 @@ plugins {
 	id("org.springframework.boot") version "4.1.2"
 	id("io.spring.dependency-management") version "1.1.7"
 	kotlin("plugin.jpa") version "2.3.21"
+	id("org.jlleitschuh.gradle.ktlint") version "12.3.0"
 }
 
 group = "br.com.vps"
@@ -23,6 +24,7 @@ dependencies {
 	// Web
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
+	implementation("org.springframework.boot:spring-boot-starter-security")
 
 	// Data
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
@@ -46,8 +48,12 @@ dependencies {
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
 
+	// Actuator (health checks)
+	implementation("org.springframework.boot:spring-boot-starter-actuator")
+
 	// Test
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
+	testImplementation("org.springframework.security:spring-security-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-redis-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
@@ -69,6 +75,13 @@ allOpen {
 	annotation("jakarta.persistence.Entity")
 	annotation("jakarta.persistence.MappedSuperclass")
 	annotation("jakarta.persistence.Embeddable")
+}
+
+ktlint {
+	version.set("1.5.0")
+	filter {
+		exclude("*.kts")
+	}
 }
 
 tasks.named<Test>("test") {

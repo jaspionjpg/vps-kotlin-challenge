@@ -34,7 +34,18 @@ spring.cloud.aws:
   sqs:
     endpoint: http://localhost:4566
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
 app:
+  security:
+    api-key: ${API_KEY:changeme-dev-only}
   notification:
     topic-arn: arn:aws:sns:us-east-1:000000000000:credit-transactions
   reconciliation:

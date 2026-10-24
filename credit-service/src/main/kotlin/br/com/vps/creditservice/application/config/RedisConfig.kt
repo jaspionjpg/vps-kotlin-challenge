@@ -10,7 +10,6 @@ import java.time.Duration
 
 @Configuration
 class RedisConfig {
-
     @Value("\${app.cache.balance-ttl-minutes}")
     private val balanceTtlMinutes: Long = 30
 

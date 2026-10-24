@@ -17,20 +17,21 @@ data class TransactionResponse(
     val status: TransactionStatus,
     val failureReason: String?,
     val createdAt: OffsetDateTime,
-    val updatedAt: OffsetDateTime
+    val updatedAt: OffsetDateTime,
 ) {
     companion object {
-        fun from(entity: TransactionEntity) = TransactionResponse(
-            id = entity.id,
-            partnerId = entity.partnerId,
-            type = entity.type,
-            amount = entity.amount,
-            description = entity.description,
-            idempotencyKey = entity.idempotencyKey,
-            status = entity.status,
-            failureReason = entity.failureReason,
-            createdAt = entity.createdAt,
-            updatedAt = entity.updatedAt
-        )
+        fun from(entity: TransactionEntity) =
+            TransactionResponse(
+                id = entity.id,
+                partnerId = entity.partnerId,
+                type = entity.type,
+                amount = entity.amount,
+                description = entity.description,
+                idempotencyKey = entity.idempotencyKey,
+                status = entity.status,
+                failureReason = entity.failureReason,
+                createdAt = entity.createdAt,
+                updatedAt = entity.updatedAt,
+            )
     }
 }

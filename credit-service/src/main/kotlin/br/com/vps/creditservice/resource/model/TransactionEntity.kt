@@ -19,41 +19,31 @@ import java.util.UUID
     indexes = [
         Index(name = "idx_transaction_partner_id", columnList = "partnerId"),
         Index(name = "idx_transaction_idempotency_key", columnList = "idempotencyKey", unique = true),
-        Index(name = "idx_transaction_status", columnList = "status")
-    ]
+        Index(name = "idx_transaction_status", columnList = "status"),
+    ],
 )
 class TransactionEntity(
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     val id: UUID? = null,
-
     @Column(nullable = false)
     val partnerId: UUID,
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     val type: TransactionType,
-
     @Column(nullable = false, precision = 19, scale = 4)
     val amount: BigDecimal,
-
     @Column(nullable = false)
     val description: String,
-
     @Column(nullable = false, unique = true)
     val idempotencyKey: String,
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var status: TransactionStatus = TransactionStatus.PENDING,
-
     @Column
     var failureReason: String? = null,
-
     @Column(nullable = false, updatable = false)
     val createdAt: OffsetDateTime = OffsetDateTime.now(),
-
     @Column(nullable = false)
-    var updatedAt: OffsetDateTime = OffsetDateTime.now()
+    var updatedAt: OffsetDateTime = OffsetDateTime.now(),
 )
