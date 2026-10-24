@@ -1,16 +1,27 @@
 package br.com.vps.creditservice.resource.repositories
 
 import br.com.vps.creditservice.resource.model.PartnerEntity
-import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
-import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
+import java.math.BigDecimal
 
 interface PartnerRepository : JpaRepository<PartnerEntity, String> {
 
     fun findByExternalId(externalId: String): PartnerEntity?
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT p FROM PartnerEntity p WHERE p.id = :id")
-    fun findByIdForUpdate(id: String): PartnerEntity?
+    @Modifying
+    @Query(
+        "UPDATE partner SET balance = balance + :amount, updated_at = NOW() WHERE id = :id",
+        nativeQuery = true
+    )
+    fun addBalance(@Param("id") id: String, @Param("amount") amount: BigDecimal): Int
+
+    @Modifying
+    @Query(
+        "UPDATE partner SET balance = balance - :amount, updated_at = NOW() WHERE id = :id AND balance >= :amount",
+        nativeQuery = true
+    )
+    fun subtractBalance(@Param("id") id: String, @Param("amount") amount: BigDecimal): Int
 }

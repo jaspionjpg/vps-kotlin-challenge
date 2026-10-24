@@ -1,7 +1,6 @@
 package br.com.vps.creditservice.domain.service
 
 import br.com.vps.creditservice.domain.exception.DuplicateTransactionException
-import br.com.vps.creditservice.domain.exception.InsufficientBalanceException
 import br.com.vps.creditservice.domain.exception.InvalidAmountException
 import br.com.vps.creditservice.resource.model.TransactionEntity
 import br.com.vps.creditservice.resource.model.TransactionStatus
@@ -21,7 +20,6 @@ import java.time.OffsetDateTime
 class TransactionService(
     private val transactionRepository: TransactionRepository,
     private val partnerService: PartnerService,
-    private val balanceCacheService: BalanceCacheService,
     private val notificationPublisher: NotificationPublisher
 ) {
 
@@ -37,8 +35,6 @@ class TransactionService(
         validateAmount(amount)
         checkIdempotency(idempotencyKey)?.let { return it }
 
-        val partner = partnerService.findByIdForUpdate(partnerId)
-
         val transaction = transactionRepository.save(
             TransactionEntity(
                 partnerId = partnerId,
@@ -50,18 +46,11 @@ class TransactionService(
         )
 
         return try {
-            partner.balance = partner.balance.add(amount)
-            partner.updatedAt = OffsetDateTime.now()
-            transaction.status = TransactionStatus.COMPLETED
-            transaction.updatedAt = OffsetDateTime.now()
-            balanceCacheService.evict(partnerId)
-            transactionRepository.save(transaction).also { publishEvent(it) }
+            partnerService.addBalance(partnerId, amount)
+            markCompleted(transaction).also { publishEvent(it) }
         } catch (e: Exception) {
             log.error("Failed to process credit for partner $partnerId", e)
-            transaction.status = TransactionStatus.FAILED
-            transaction.failureReason = e.message
-            transaction.updatedAt = OffsetDateTime.now()
-            transactionRepository.save(transaction)
+            markFailed(transaction, e.message ?: "Unknown error")
         }
     }
 
@@ -75,12 +64,6 @@ class TransactionService(
         validateAmount(amount)
         checkIdempotency(idempotencyKey)?.let { return it }
 
-        val partner = partnerService.findByIdForUpdate(partnerId)
-
-        if (partner.balance < amount) {
-            throw InsufficientBalanceException(partnerId)
-        }
-
         val transaction = transactionRepository.save(
             TransactionEntity(
                 partnerId = partnerId,
@@ -92,18 +75,11 @@ class TransactionService(
         )
 
         return try {
-            partner.balance = partner.balance.subtract(amount)
-            partner.updatedAt = OffsetDateTime.now()
-            transaction.status = TransactionStatus.COMPLETED
-            transaction.updatedAt = OffsetDateTime.now()
-            balanceCacheService.evict(partnerId)
-            transactionRepository.save(transaction).also { publishEvent(it) }
+            partnerService.subtractBalance(partnerId, amount)
+            markCompleted(transaction).also { publishEvent(it) }
         } catch (e: Exception) {
             log.error("Failed to process debit for partner $partnerId", e)
-            transaction.status = TransactionStatus.FAILED
-            transaction.failureReason = e.message
-            transaction.updatedAt = OffsetDateTime.now()
-            transactionRepository.save(transaction)
+            markFailed(transaction, e.message ?: "Unknown error")
         }
     }
 
@@ -117,6 +93,25 @@ class TransactionService(
     fun findById(transactionId: String): TransactionEntity =
         transactionRepository.findById(transactionId)
             .orElseThrow { RuntimeException("Transaction not found: $transactionId") }
+
+    @Transactional(readOnly = true)
+    fun findPendingBefore(before: OffsetDateTime): List<TransactionEntity> =
+        transactionRepository.findPendingBefore(TransactionStatus.PENDING, before)
+
+    @Transactional
+    fun markCompleted(transaction: TransactionEntity): TransactionEntity {
+        transaction.status = TransactionStatus.COMPLETED
+        transaction.updatedAt = OffsetDateTime.now()
+        return transactionRepository.save(transaction)
+    }
+
+    @Transactional
+    fun markFailed(transaction: TransactionEntity, reason: String): TransactionEntity {
+        transaction.status = TransactionStatus.FAILED
+        transaction.failureReason = reason
+        transaction.updatedAt = OffsetDateTime.now()
+        return transactionRepository.save(transaction)
+    }
 
     private fun validateAmount(amount: BigDecimal) {
         if (amount <= BigDecimal.ZERO) throw InvalidAmountException()
