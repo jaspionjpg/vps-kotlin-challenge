@@ -6,6 +6,8 @@ import br.com.vps.creditservice.domain.exception.InvalidAmountException
 import br.com.vps.creditservice.resource.model.TransactionEntity
 import br.com.vps.creditservice.resource.model.TransactionStatus
 import br.com.vps.creditservice.resource.model.TransactionType
+import br.com.vps.creditservice.resource.messaging.NotificationPublisher
+import br.com.vps.creditservice.resource.messaging.TransactionEvent
 import br.com.vps.creditservice.resource.repositories.TransactionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
@@ -18,7 +20,9 @@ import java.time.OffsetDateTime
 @Service
 class TransactionService(
     private val transactionRepository: TransactionRepository,
-    private val partnerService: PartnerService
+    private val partnerService: PartnerService,
+    private val balanceCacheService: BalanceCacheService,
+    private val notificationPublisher: NotificationPublisher
 ) {
 
     private val log = LoggerFactory.getLogger(TransactionService::class.java)
@@ -50,7 +54,8 @@ class TransactionService(
             partner.updatedAt = OffsetDateTime.now()
             transaction.status = TransactionStatus.COMPLETED
             transaction.updatedAt = OffsetDateTime.now()
-            transactionRepository.save(transaction)
+            balanceCacheService.evict(partnerId)
+            transactionRepository.save(transaction).also { publishEvent(it) }
         } catch (e: Exception) {
             log.error("Failed to process credit for partner $partnerId", e)
             transaction.status = TransactionStatus.FAILED
@@ -91,7 +96,8 @@ class TransactionService(
             partner.updatedAt = OffsetDateTime.now()
             transaction.status = TransactionStatus.COMPLETED
             transaction.updatedAt = OffsetDateTime.now()
-            transactionRepository.save(transaction)
+            balanceCacheService.evict(partnerId)
+            transactionRepository.save(transaction).also { publishEvent(it) }
         } catch (e: Exception) {
             log.error("Failed to process debit for partner $partnerId", e)
             transaction.status = TransactionStatus.FAILED
@@ -122,5 +128,19 @@ class TransactionService(
             throw DuplicateTransactionException(idempotencyKey)
         }
         return existing?.takeIf { it.status == TransactionStatus.FAILED }
+    }
+
+    private fun publishEvent(transaction: TransactionEntity) {
+        notificationPublisher.publish(
+            TransactionEvent(
+                transactionId = transaction.id,
+                partnerId = transaction.partnerId,
+                type = transaction.type,
+                amount = transaction.amount,
+                status = transaction.status,
+                description = transaction.description,
+                timestamp = transaction.updatedAt
+            )
+        )
     }
 }
