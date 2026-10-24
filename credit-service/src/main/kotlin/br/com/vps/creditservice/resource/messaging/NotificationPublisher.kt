@@ -2,6 +2,7 @@ package br.com.vps.creditservice.resource.messaging
 
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import software.amazon.awssdk.services.sns.SnsClient
 import software.amazon.awssdk.services.sns.model.MessageAttributeValue
@@ -16,6 +17,7 @@ class NotificationPublisher(
 ) {
     private val log = LoggerFactory.getLogger(NotificationPublisher::class.java)
 
+    @Async("notificationExecutor")
     fun publish(event: TransactionEvent) {
         try {
             val message = objectMapper.writeValueAsString(event)

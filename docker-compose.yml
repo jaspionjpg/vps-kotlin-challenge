@@ -67,6 +67,7 @@ services:
       SPRING_CLOUD_AWS_SNS_ENDPOINT: http://localstack:4566
       SPRING_CLOUD_AWS_SQS_ENDPOINT: http://localstack:4566
       API_KEY: ${API_KEY:-changeme-dev-only}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7200/actuator/health"]
       interval: 10s

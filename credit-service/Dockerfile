@@ -13,4 +13,9 @@ RUN addgroup -S app && adduser -S app -G app
 COPY --from=build /app/build/libs/*.jar app.jar
 USER app
 EXPOSE 7200
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-XX:InitialRAMPercentage=50.0", \
+  "-XX:+UseZGC", \
+  "-XX:+ZGenerational", \
+  "-jar", "app.jar"]

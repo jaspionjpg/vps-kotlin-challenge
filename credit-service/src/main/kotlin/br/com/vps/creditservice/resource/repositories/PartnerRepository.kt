@@ -30,4 +30,11 @@ interface PartnerRepository : JpaRepository<PartnerEntity, UUID> {
         @Param("id") id: UUID,
         @Param("amount") amount: BigDecimal,
     ): Int
+
+    @Query(
+        "SELECT p.balance FROM PartnerEntity p WHERE p.id = :id",
+    )
+    fun findBalanceById(
+        @Param("id") id: UUID,
+    ): BigDecimal?
 }

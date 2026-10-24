@@ -142,7 +142,7 @@ class PartnerServiceTest {
     @Test
     fun `subtractBalance should throw InsufficientBalanceException when balance too low`() {
         whenever(partnerRepository.subtractBalance(partnerId, BigDecimal("999.00"))).thenReturn(0)
-        whenever(partnerRepository.existsById(partnerId)).thenReturn(true)
+        whenever(partnerRepository.findBalanceById(partnerId)).thenReturn(BigDecimal("50.00"))
 
         assertThrows<InsufficientBalanceException> {
             partnerService.subtractBalance(partnerId, BigDecimal("999.00"))
@@ -152,7 +152,7 @@ class PartnerServiceTest {
     @Test
     fun `subtractBalance should throw PartnerNotFoundException when partner not exists`() {
         whenever(partnerRepository.subtractBalance(partnerId, BigDecimal("10.00"))).thenReturn(0)
-        whenever(partnerRepository.existsById(partnerId)).thenReturn(false)
+        whenever(partnerRepository.findBalanceById(partnerId)).thenReturn(null)
 
         assertThrows<PartnerNotFoundException> {
             partnerService.subtractBalance(partnerId, BigDecimal("10.00"))
