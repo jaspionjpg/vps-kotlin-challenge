@@ -1,7 +1,10 @@
 package br.com.vps.creditservice.domain.service
 
 import br.com.vps.creditservice.domain.exception.DuplicateTransactionException
+import br.com.vps.creditservice.domain.exception.InsufficientBalanceException
 import br.com.vps.creditservice.domain.exception.InvalidAmountException
+import br.com.vps.creditservice.domain.exception.PartnerNotFoundException
+import br.com.vps.creditservice.domain.exception.TransactionNotFoundException
 import br.com.vps.creditservice.resource.model.TransactionEntity
 import br.com.vps.creditservice.resource.model.TransactionStatus
 import br.com.vps.creditservice.resource.model.TransactionType
@@ -49,9 +52,9 @@ class TransactionService(
         return try {
             partnerService.addBalance(partnerId, amount)
             markCompleted(transaction).also { publishEvent(it) }
-        } catch (e: Exception) {
-            log.error("Failed to process credit for partner $partnerId", e)
-            markFailed(transaction, e.message ?: "Unknown error")
+        } catch (e: PartnerNotFoundException) {
+            log.warn("Credit failed for partner $partnerId: partner not found", e)
+            markFailed(transaction, e.message ?: "Partner not found")
         }
     }
 
@@ -78,9 +81,12 @@ class TransactionService(
         return try {
             partnerService.subtractBalance(partnerId, amount)
             markCompleted(transaction).also { publishEvent(it) }
-        } catch (e: Exception) {
-            log.error("Failed to process debit for partner $partnerId", e)
-            markFailed(transaction, e.message ?: "Unknown error")
+        } catch (e: InsufficientBalanceException) {
+            log.warn("Debit failed for partner $partnerId: insufficient balance", e)
+            markFailed(transaction, e.message ?: "Insufficient balance")
+        } catch (e: PartnerNotFoundException) {
+            log.warn("Debit failed for partner $partnerId: partner not found", e)
+            markFailed(transaction, e.message ?: "Partner not found")
         }
     }
 
@@ -93,11 +99,11 @@ class TransactionService(
     @Transactional(readOnly = true)
     fun findById(transactionId: UUID): TransactionEntity =
         transactionRepository.findById(transactionId)
-            .orElseThrow { RuntimeException("Transaction not found: $transactionId") }
+            .orElseThrow { TransactionNotFoundException(transactionId) }
 
     @Transactional(readOnly = true)
-    fun findPendingBefore(before: OffsetDateTime): List<TransactionEntity> =
-        transactionRepository.findPendingBefore(TransactionStatus.PENDING, before)
+    fun findPendingBefore(before: OffsetDateTime, pageable: Pageable): List<TransactionEntity> =
+        transactionRepository.findPendingBefore(TransactionStatus.PENDING, before, pageable)
 
     @Transactional
     fun markCompleted(transaction: TransactionEntity): TransactionEntity {

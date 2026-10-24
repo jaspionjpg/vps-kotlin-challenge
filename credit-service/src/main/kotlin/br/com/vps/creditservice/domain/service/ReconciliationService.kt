@@ -5,7 +5,9 @@ import br.com.vps.creditservice.domain.exception.PartnerNotFoundException
 import br.com.vps.creditservice.resource.model.TransactionEntity
 import br.com.vps.creditservice.resource.model.TransactionType
 import org.slf4j.LoggerFactory
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.data.domain.PageRequest
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -22,24 +24,34 @@ class ReconciliationService(
     @Value("\${app.reconciliation.pending-timeout-minutes}")
     private val pendingTimeoutMinutes: Long = 10
 
+    companion object {
+        private const val BATCH_SIZE = 100
+    }
+
     @Scheduled(cron = "\${app.reconciliation.cron}")
+    @SchedulerLock(name = "reconcilePendingTransactions", lockAtLeastFor = "1m", lockAtMostFor = "10m")
     fun reconcilePendingTransactions() {
         val cutoff = OffsetDateTime.now().minusMinutes(pendingTimeoutMinutes)
-        val pendingTransactions = transactionService.findPendingBefore(cutoff)
+        var processed = 0
 
-        if (pendingTransactions.isEmpty()) return
+        do {
+            val batch = transactionService.findPendingBefore(cutoff, PageRequest.of(0, BATCH_SIZE))
+            if (batch.isEmpty()) break
 
-        log.info("Reconciliation started: {} pending transactions found", pendingTransactions.size)
+            if (processed == 0) log.info("Reconciliation started")
 
-        pendingTransactions.forEach { transaction ->
-            try {
-                reconcileTransaction(transaction)
-            } catch (e: Exception) {
-                log.error("Reconciliation failed for transaction {}", transaction.id, e)
+            batch.forEach { transaction ->
+                try {
+                    reconcileTransaction(transaction)
+                } catch (e: Exception) {
+                    log.error("Reconciliation failed for transaction {}", transaction.id, e)
+                }
             }
-        }
 
-        log.info("Reconciliation completed")
+            processed += batch.size
+        } while (batch.size == BATCH_SIZE)
+
+        if (processed > 0) log.info("Reconciliation completed: {} transactions processed", processed)
     }
 
     @Transactional

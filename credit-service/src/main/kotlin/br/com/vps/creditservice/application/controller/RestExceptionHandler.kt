@@ -59,7 +59,7 @@ class RestExceptionHandler {
         log.error("Unexpected error", ex)
         val response = GenericErrorResponse(
             status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            error = ex::class.java.simpleName,
+            error = "InternalServerError",
             message = "An unexpected error occurred",
             path = extractPath(request)
         )
