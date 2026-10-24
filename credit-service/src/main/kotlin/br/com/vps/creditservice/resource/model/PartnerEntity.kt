@@ -16,7 +16,7 @@ class PartnerEntity(
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    val id: String = UUID.randomUUID().toString(),
+    val id: UUID? = null,
 
     @Column(nullable = false, unique = true)
     val externalId: String,

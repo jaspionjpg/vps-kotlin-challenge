@@ -2,12 +2,14 @@ package br.com.vps.creditservice.domain.service
 
 import br.com.vps.creditservice.domain.exception.InsufficientBalanceException
 import br.com.vps.creditservice.domain.exception.PartnerAlreadyExistsException
+import br.com.vps.creditservice.domain.exception.PartnerNotFoundByExternalIdException
 import br.com.vps.creditservice.domain.exception.PartnerNotFoundException
 import br.com.vps.creditservice.resource.model.PartnerEntity
 import br.com.vps.creditservice.resource.repositories.PartnerRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.util.UUID
 
 @Service
 class PartnerService(
@@ -16,17 +18,17 @@ class PartnerService(
 ) {
 
     @Transactional(readOnly = true)
-    fun findById(partnerId: String): PartnerEntity =
+    fun findById(partnerId: UUID): PartnerEntity =
         partnerRepository.findById(partnerId)
             .orElseThrow { PartnerNotFoundException(partnerId) }
 
     @Transactional(readOnly = true)
     fun findByExternalId(externalId: String): PartnerEntity =
         partnerRepository.findByExternalId(externalId)
-            ?: throw PartnerNotFoundException(externalId)
+            ?: throw PartnerNotFoundByExternalIdException(externalId)
 
     @Transactional(readOnly = true)
-    fun getBalance(partnerId: String): BigDecimal {
+    fun getBalance(partnerId: UUID): BigDecimal {
         balanceCacheService.get(partnerId)?.let { return it }
         val balance = findById(partnerId).balance
         balanceCacheService.set(partnerId, balance)
@@ -44,14 +46,14 @@ class PartnerService(
     }
 
     @Transactional
-    fun addBalance(partnerId: String, amount: BigDecimal) {
+    fun addBalance(partnerId: UUID, amount: BigDecimal) {
         val rowsAffected = partnerRepository.addBalance(partnerId, amount)
         if (rowsAffected == 0) throw PartnerNotFoundException(partnerId)
         balanceCacheService.evict(partnerId)
     }
 
     @Transactional
-    fun subtractBalance(partnerId: String, amount: BigDecimal) {
+    fun subtractBalance(partnerId: UUID, amount: BigDecimal) {
         val rowsAffected = partnerRepository.subtractBalance(partnerId, amount)
         if (rowsAffected == 0) {
             if (!partnerRepository.existsById(partnerId)) {

@@ -5,10 +5,11 @@ import br.com.vps.creditservice.resource.model.TransactionStatus
 import br.com.vps.creditservice.resource.model.TransactionType
 import java.math.BigDecimal
 import java.time.OffsetDateTime
+import java.util.UUID
 
 data class TransactionResponse(
-    val id: String,
-    val partnerId: String,
+    val id: UUID?,
+    val partnerId: UUID,
     val type: TransactionType,
     val amount: BigDecimal,
     val description: String,

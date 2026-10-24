@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.OffsetDateTime
+import java.util.UUID
 
 @Service
 class TransactionService(
@@ -27,7 +28,7 @@ class TransactionService(
 
     @Transactional
     fun addCredit(
-        partnerId: String,
+        partnerId: UUID,
         amount: BigDecimal,
         description: String,
         idempotencyKey: String
@@ -56,7 +57,7 @@ class TransactionService(
 
     @Transactional
     fun consumeCredit(
-        partnerId: String,
+        partnerId: UUID,
         amount: BigDecimal,
         description: String,
         idempotencyKey: String
@@ -84,13 +85,13 @@ class TransactionService(
     }
 
     @Transactional(readOnly = true)
-    fun getTransactionHistory(partnerId: String, pageable: Pageable): Page<TransactionEntity> {
+    fun getTransactionHistory(partnerId: UUID, pageable: Pageable): Page<TransactionEntity> {
         partnerService.findById(partnerId)
         return transactionRepository.findByPartnerIdOrderByCreatedAtDesc(partnerId, pageable)
     }
 
     @Transactional(readOnly = true)
-    fun findById(transactionId: String): TransactionEntity =
+    fun findById(transactionId: UUID): TransactionEntity =
         transactionRepository.findById(transactionId)
             .orElseThrow { RuntimeException("Transaction not found: $transactionId") }
 
