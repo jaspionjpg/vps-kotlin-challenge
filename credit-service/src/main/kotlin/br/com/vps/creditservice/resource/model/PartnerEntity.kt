@@ -6,7 +6,6 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
-import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -27,9 +26,6 @@ class PartnerEntity(
 
     @Column(nullable = false, precision = 19, scale = 4)
     var balance: BigDecimal = BigDecimal.ZERO,
-
-    @Version
-    val version: Long = 0,
 
     @Column(nullable = false, updatable = false)
     val createdAt: OffsetDateTime = OffsetDateTime.now(),

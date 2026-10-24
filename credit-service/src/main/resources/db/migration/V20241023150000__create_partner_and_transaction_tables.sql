@@ -4,7 +4,6 @@ CREATE TABLE partner (
     external_id     VARCHAR(255)    NOT NULL UNIQUE,
     name            VARCHAR(255)    NOT NULL,
     balance         NUMERIC(19, 4)  NOT NULL DEFAULT 0,
-    version         BIGINT          NOT NULL DEFAULT 0,
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     PRIMARY KEY (id)

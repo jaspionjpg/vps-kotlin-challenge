@@ -1,5 +1,6 @@
 package br.com.vps.creditservice.domain.service
 
+import br.com.vps.creditservice.domain.exception.InsufficientBalanceException
 import br.com.vps.creditservice.domain.exception.PartnerAlreadyExistsException
 import br.com.vps.creditservice.domain.exception.PartnerNotFoundException
 import br.com.vps.creditservice.resource.model.PartnerEntity
@@ -43,7 +44,21 @@ class PartnerService(
     }
 
     @Transactional
-    fun findByIdForUpdate(partnerId: String): PartnerEntity =
-        partnerRepository.findByIdForUpdate(partnerId)
-            ?: throw PartnerNotFoundException(partnerId)
+    fun addBalance(partnerId: String, amount: BigDecimal) {
+        val rowsAffected = partnerRepository.addBalance(partnerId, amount)
+        if (rowsAffected == 0) throw PartnerNotFoundException(partnerId)
+        balanceCacheService.evict(partnerId)
+    }
+
+    @Transactional
+    fun subtractBalance(partnerId: String, amount: BigDecimal) {
+        val rowsAffected = partnerRepository.subtractBalance(partnerId, amount)
+        if (rowsAffected == 0) {
+            if (!partnerRepository.existsById(partnerId)) {
+                throw PartnerNotFoundException(partnerId)
+            }
+            throw InsufficientBalanceException(partnerId)
+        }
+        balanceCacheService.evict(partnerId)
+    }
 }
