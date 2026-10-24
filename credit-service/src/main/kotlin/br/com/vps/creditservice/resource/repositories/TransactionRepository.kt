@@ -13,6 +13,11 @@ import java.util.UUID
 interface TransactionRepository : JpaRepository<TransactionEntity, UUID> {
     fun findByIdempotencyKey(idempotencyKey: String): TransactionEntity?
 
+    fun findByIdAndPartnerId(
+        id: UUID,
+        partnerId: UUID
+    ): TransactionEntity?
+
     fun findByPartnerIdOrderByCreatedAtDesc(
         partnerId: UUID,
         pageable: Pageable,

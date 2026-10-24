@@ -60,8 +60,8 @@ services:
       - "7200:7200"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://vps-db:5432/credit
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
       SPRING_DATA_REDIS_HOST: vps-redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_CLOUD_AWS_SNS_ENDPOINT: http://localstack:4566

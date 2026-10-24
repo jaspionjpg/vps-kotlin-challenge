@@ -180,7 +180,7 @@ class CreditControllerTest {
                 idempotencyKey = "k-specific",
                 status = TransactionStatus.COMPLETED,
             )
-        whenever(transactionService.findById(txId1)).thenReturn(transaction)
+        whenever(transactionService.findByIdForPartner(txId1, partnerId)).thenReturn(transaction)
 
         mockMvc
             .perform(get("/partners/$partnerId/transactions/$txId1"))
@@ -191,7 +191,7 @@ class CreditControllerTest {
     @Test
     fun `GET transaction by id should return 404 when not found`() {
         val missingTxId = UUID.fromString("00000000-0000-0000-0000-000000000099")
-        whenever(transactionService.findById(missingTxId)).thenThrow(TransactionNotFoundException(missingTxId))
+        whenever(transactionService.findByIdForPartner(missingTxId, partnerId)).thenThrow(TransactionNotFoundException(missingTxId))
 
         mockMvc
             .perform(get("/partners/$partnerId/transactions/$missingTxId"))

@@ -3,6 +3,7 @@ package br.com.vps.creditservice.domain.service
 import br.com.vps.creditservice.domain.exception.DuplicateTransactionException
 import br.com.vps.creditservice.domain.exception.InsufficientBalanceException
 import br.com.vps.creditservice.domain.exception.InvalidAmountException
+import br.com.vps.creditservice.domain.exception.InvalidIdempotencyKeyException
 import br.com.vps.creditservice.domain.exception.PartnerNotFoundException
 import br.com.vps.creditservice.domain.exception.TransactionNotFoundException
 import br.com.vps.creditservice.resource.messaging.NotificationPublisher
@@ -36,7 +37,8 @@ class TransactionService(
         idempotencyKey: String,
     ): TransactionEntity {
         validateAmount(amount)
-        checkIdempotency(idempotencyKey)?.let { return it }
+        validateIdempotencyKey(idempotencyKey)
+        checkIdempotency(idempotencyKey)
 
         val transaction =
             transactionRepository.save(
@@ -54,7 +56,7 @@ class TransactionService(
             markCompleted(transaction).also { publishEvent(it) }
         } catch (e: PartnerNotFoundException) {
             log.warn("Credit failed for partner $partnerId: partner not found", e)
-            markFailed(transaction, e.message ?: "Partner not found")
+            markFailed(transaction, "Partner not found")
         }
     }
 
@@ -66,7 +68,8 @@ class TransactionService(
         idempotencyKey: String,
     ): TransactionEntity {
         validateAmount(amount)
-        checkIdempotency(idempotencyKey)?.let { return it }
+        validateIdempotencyKey(idempotencyKey)
+        checkIdempotency(idempotencyKey)
 
         val transaction =
             transactionRepository.save(
@@ -84,10 +87,10 @@ class TransactionService(
             markCompleted(transaction).also { publishEvent(it) }
         } catch (e: InsufficientBalanceException) {
             log.warn("Debit failed for partner $partnerId: insufficient balance", e)
-            markFailed(transaction, e.message ?: "Insufficient balance")
+            markFailed(transaction, "Insufficient balance")
         } catch (e: PartnerNotFoundException) {
             log.warn("Debit failed for partner $partnerId: partner not found", e)
-            markFailed(transaction, e.message ?: "Partner not found")
+            markFailed(transaction, "Partner not found")
         }
     }
 
@@ -105,6 +108,14 @@ class TransactionService(
         transactionRepository
             .findById(transactionId)
             .orElseThrow { TransactionNotFoundException(transactionId) }
+
+    @Transactional(readOnly = true)
+    fun findByIdForPartner(
+        transactionId: UUID,
+        partnerId: UUID
+    ): TransactionEntity =
+        transactionRepository.findByIdAndPartnerId(transactionId, partnerId)
+            ?: throw TransactionNotFoundException(transactionId)
 
     @Transactional(readOnly = true)
     fun findPendingBefore(
@@ -134,12 +145,19 @@ class TransactionService(
         if (amount <= BigDecimal.ZERO) throw InvalidAmountException()
     }
 
-    private fun checkIdempotency(idempotencyKey: String): TransactionEntity? {
-        val existing = transactionRepository.findByIdempotencyKey(idempotencyKey)
-        if (existing != null && existing.status == TransactionStatus.COMPLETED) {
+    private fun validateIdempotencyKey(idempotencyKey: String) {
+        if (idempotencyKey.isBlank()) throw InvalidIdempotencyKeyException("Idempotency key must not be blank")
+        if (idempotencyKey.length > 64) throw InvalidIdempotencyKeyException("Idempotency key must not exceed 64 characters")
+    }
+
+    private fun checkIdempotency(idempotencyKey: String) {
+        val existing = transactionRepository.findByIdempotencyKey(idempotencyKey) ?: return
+        if (existing.status == TransactionStatus.COMPLETED) {
             throw DuplicateTransactionException(idempotencyKey)
         }
-        return existing?.takeIf { it.status == TransactionStatus.FAILED }
+        if (existing.status == TransactionStatus.FAILED) {
+            throw DuplicateTransactionException(idempotencyKey)
+        }
     }
 
     private fun publishEvent(transaction: TransactionEntity) {

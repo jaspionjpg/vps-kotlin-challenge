@@ -5,9 +5,9 @@ spring:
   application:
     name: credit-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/credit
-    username: postgres
-    password: postgres
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/credit}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -27,8 +27,8 @@ spring.cloud.aws:
   region:
     static: us-east-1
   credentials:
-    access-key: test
-    secret-key: test
+    access-key: ${AWS_ACCESS_KEY:test}
+    secret-key: ${AWS_SECRET_KEY:test}
   sns:
     endpoint: http://localhost:4566
   sqs:
@@ -45,7 +45,7 @@ management:
 
 app:
   security:
-    api-key: ${API_KEY:changeme-dev-only}
+    api-key: ${API_KEY}
   notification:
     topic-arn: arn:aws:sns:us-east-1:000000000000:credit-transactions
   reconciliation:

@@ -105,6 +105,6 @@ class ReconciliationServiceTest {
 
         reconciliationService.reconcileTransaction(transaction)
 
-        verify(transactionService).markFailed(transaction, "Partner not found: $missingPartnerId")
+        verify(transactionService).markFailed(transaction, "Partner not found during reconciliation")
     }
 }

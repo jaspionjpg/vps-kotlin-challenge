@@ -10,6 +10,9 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import tools.jackson.databind.ObjectMapper
 
+// NOTE: Current auth uses a single shared API key. In production, this should be replaced with
+// per-partner credentials (e.g., OAuth2 client_credentials per partner) so each partner can only
+// access their own resources, enabling proper tenant isolation at the auth layer.
 @Configuration
 @EnableWebSecurity
 class SecurityConfig(

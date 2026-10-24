@@ -72,7 +72,7 @@ class ReconciliationService(
             transactionService.markFailed(transaction, "Insufficient balance during reconciliation")
             log.warn("Reconciliation FAILED for DEBIT transaction {} — insufficient balance", transaction.id)
         } catch (e: PartnerNotFoundException) {
-            transactionService.markFailed(transaction, "Partner not found: ${transaction.partnerId}")
+            transactionService.markFailed(transaction, "Partner not found during reconciliation")
             log.warn("Reconciliation FAILED for transaction {} — partner not found", transaction.id)
         }
     }

@@ -234,7 +234,7 @@ class TransactionServiceTest {
     }
 
     @Test
-    fun `addCredit should return existing FAILED transaction for retry with same idempotency key`() {
+    fun `addCredit should throw DuplicateTransactionException for FAILED idempotency key`() {
         val existing =
             TransactionEntity(
                 partnerId = partnerId,
@@ -247,9 +247,8 @@ class TransactionServiceTest {
         existing.failureReason = "Partner not found"
         whenever(transactionRepository.findByIdempotencyKey("key-retry")).thenReturn(existing)
 
-        val result = transactionService.addCredit(partnerId, BigDecimal("100.00"), "Retry", "key-retry")
-
-        assertEquals(TransactionStatus.FAILED, result.status)
-        assertEquals("Previously failed", result.description)
+        assertThrows<DuplicateTransactionException> {
+            transactionService.addCredit(partnerId, BigDecimal("100.00"), "Retry", "key-retry")
+        }
     }
 }
