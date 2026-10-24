@@ -17,6 +17,9 @@ class InsufficientBalanceException(partnerId: UUID) :
 class DuplicateTransactionException(idempotencyKey: String) :
     ApiException("Transaction already processed with key: $idempotencyKey", HttpStatus.CONFLICT)
 
+class TransactionNotFoundException(transactionId: UUID) :
+    ApiException("Transaction not found: $transactionId", HttpStatus.NOT_FOUND)
+
 class InvalidAmountException :
     ApiException("Amount must be greater than zero", HttpStatus.BAD_REQUEST)
 

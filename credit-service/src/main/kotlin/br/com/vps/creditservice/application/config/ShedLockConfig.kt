@@ -1,0 +1,19 @@
+package br.com.vps.creditservice.application.config
+
+import net.javacrumbs.shedlock.core.LockProvider
+import net.javacrumbs.shedlock.provider.redis.spring.RedisLockProvider
+import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.data.redis.connection.RedisConnectionFactory
+
+@Configuration
+@ConditionalOnBean(RedisConnectionFactory::class)
+@EnableSchedulerLock(defaultLockAtMostFor = "10m")
+class ShedLockConfig {
+
+    @Bean
+    fun lockProvider(connectionFactory: RedisConnectionFactory): LockProvider =
+        RedisLockProvider(connectionFactory)
+}

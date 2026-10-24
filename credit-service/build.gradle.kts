@@ -35,6 +35,10 @@ dependencies {
 	implementation("io.awspring.cloud:spring-cloud-aws-starter-sns:3.3.1")
 	implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs:3.3.1")
 
+	// Scheduling (distributed lock via Redis)
+	implementation("net.javacrumbs.shedlock:shedlock-spring:6.8.0")
+	implementation("net.javacrumbs.shedlock:shedlock-provider-redis-spring:6.8.0")
+
 	// OpenAPI / Swagger
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8")
 

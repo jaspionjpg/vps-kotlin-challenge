@@ -18,10 +18,11 @@ interface TransactionRepository : JpaRepository<TransactionEntity, UUID> {
     fun findByPartnerIdOrderByCreatedAtDesc(partnerId: UUID, pageable: Pageable): Page<TransactionEntity>
 
     @Query(
-        "SELECT t FROM TransactionEntity t WHERE t.status = :status AND t.createdAt < :before"
+        "SELECT t FROM TransactionEntity t WHERE t.status = :status AND t.createdAt < :before ORDER BY t.createdAt ASC"
     )
     fun findPendingBefore(
         @Param("status") status: TransactionStatus,
-        @Param("before") before: OffsetDateTime
+        @Param("before") before: OffsetDateTime,
+        pageable: Pageable
     ): List<TransactionEntity>
 }
