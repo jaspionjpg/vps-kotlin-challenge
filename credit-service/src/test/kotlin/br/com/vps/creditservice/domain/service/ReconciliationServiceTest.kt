@@ -13,6 +13,7 @@ import org.mockito.kotlin.doThrow
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.core.task.SyncTaskExecutor
 import java.math.BigDecimal
 import java.util.UUID
 
@@ -26,7 +27,7 @@ class ReconciliationServiceTest {
 
     @BeforeEach
     fun setup() {
-        reconciliationService = ReconciliationService(transactionService, partnerService)
+        reconciliationService = ReconciliationService(transactionService, partnerService, SyncTaskExecutor())
     }
 
     @Test
@@ -105,6 +106,6 @@ class ReconciliationServiceTest {
 
         reconciliationService.reconcileTransaction(transaction)
 
-        verify(transactionService).markFailed(transaction, "Partner not found: $missingPartnerId")
+        verify(transactionService).markFailed(transaction, "Partner not found during reconciliation")
     }
 }

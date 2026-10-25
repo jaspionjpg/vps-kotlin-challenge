@@ -60,13 +60,14 @@ services:
       - "7200:7200"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://vps-db:5432/credit
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-postgres}
       SPRING_DATA_REDIS_HOST: vps-redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_CLOUD_AWS_SNS_ENDPOINT: http://localstack:4566
       SPRING_CLOUD_AWS_SQS_ENDPOINT: http://localstack:4566
       API_KEY: ${API_KEY:-changeme-dev-only}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7200/actuator/health"]
       interval: 10s

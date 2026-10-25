@@ -65,9 +65,8 @@ class PartnerService(
     ) {
         val rowsAffected = partnerRepository.subtractBalance(partnerId, amount)
         if (rowsAffected == 0) {
-            if (!partnerRepository.existsById(partnerId)) {
-                throw PartnerNotFoundException(partnerId)
-            }
+            partnerRepository.findBalanceById(partnerId)
+                ?: throw PartnerNotFoundException(partnerId)
             throw InsufficientBalanceException(partnerId)
         }
         balanceCacheService.evict(partnerId)

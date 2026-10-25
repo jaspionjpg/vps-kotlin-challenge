@@ -9,6 +9,7 @@ import org.springframework.http.MediaType
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.filter.OncePerRequestFilter
 import tools.jackson.databind.ObjectMapper
+import java.security.MessageDigest
 import java.time.OffsetDateTime
 
 class ApiKeyAuthFilter(
@@ -25,7 +26,9 @@ class ApiKeyAuthFilter(
         filterChain: FilterChain,
     ) {
         val requestApiKey = request.getHeader(API_KEY_HEADER)
-        if (requestApiKey == null || requestApiKey != apiKey) {
+        if (requestApiKey == null ||
+            !MessageDigest.isEqual(requestApiKey.toByteArray(), apiKey.toByteArray())
+        ) {
             val errorResponse =
                 GenericErrorResponse(
                     status = HttpStatus.UNAUTHORIZED.value(),
@@ -40,19 +43,17 @@ class ApiKeyAuthFilter(
             return
         }
 
-        SecurityContextHolder.getContext().authentication = ApiKeyAuthentication(apiKey)
+        SecurityContextHolder.getContext().authentication = ApiKeyAuthentication()
         filterChain.doFilter(request, response)
     }
 }
 
-class ApiKeyAuthentication(
-    private val apiKey: String,
-) : org.springframework.security.authentication.AbstractAuthenticationToken(emptyList()) {
+class ApiKeyAuthentication : org.springframework.security.authentication.AbstractAuthenticationToken(emptyList()) {
     init {
         isAuthenticated = true
     }
 
-    override fun getCredentials(): Any = apiKey
+    override fun getCredentials(): Any = "[PROTECTED]"
 
     override fun getPrincipal(): Any = "api-key-user"
 }

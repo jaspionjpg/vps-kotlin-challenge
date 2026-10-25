@@ -73,5 +73,6 @@ class CreditController(
     fun getTransaction(
         @PathVariable partnerId: UUID,
         @PathVariable transactionId: UUID,
-    ): ResponseEntity<TransactionResponse> = ResponseEntity.ok(TransactionResponse.from(transactionService.findById(transactionId)))
+    ): ResponseEntity<TransactionResponse> =
+        ResponseEntity.ok(TransactionResponse.from(transactionService.findByIdForPartner(transactionId, partnerId)))
 }

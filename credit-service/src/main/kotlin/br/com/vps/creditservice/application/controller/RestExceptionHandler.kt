@@ -5,6 +5,7 @@ import br.com.vps.creditservice.domain.exception.ApiException
 import org.slf4j.LoggerFactory
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -63,6 +64,28 @@ class RestExceptionHandler {
                 path = extractPath(request),
             )
         return ResponseEntity(response, HttpStatus.BAD_REQUEST)
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException::class)
+    fun handleDataIntegrity(
+        ex: DataIntegrityViolationException,
+        request: WebRequest,
+    ): ResponseEntity<GenericErrorResponse> {
+        log.warn("Data integrity violation: {}", ex.message)
+        val message =
+            if (ex.message?.contains("idempotency_key") == true) {
+                "Transaction already processed with the provided idempotency key"
+            } else {
+                "A conflict occurred while processing the request"
+            }
+        val response =
+            GenericErrorResponse(
+                status = HttpStatus.CONFLICT.value(),
+                error = "Conflict",
+                message = message,
+                path = extractPath(request),
+            )
+        return ResponseEntity(response, HttpStatus.CONFLICT)
     }
 
     @ExceptionHandler(Exception::class)

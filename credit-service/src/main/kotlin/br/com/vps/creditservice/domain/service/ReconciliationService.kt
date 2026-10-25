@@ -6,17 +6,21 @@ import br.com.vps.creditservice.resource.model.TransactionEntity
 import br.com.vps.creditservice.resource.model.TransactionType
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.core.task.TaskExecutor
 import org.springframework.data.domain.PageRequest
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.OffsetDateTime
+import java.util.concurrent.CompletableFuture
 
 @Service
 class ReconciliationService(
     private val transactionService: TransactionService,
     private val partnerService: PartnerService,
+    @Qualifier("reconciliationExecutor") private val executor: TaskExecutor,
 ) {
     private val log = LoggerFactory.getLogger(ReconciliationService::class.java)
 
@@ -39,13 +43,20 @@ class ReconciliationService(
 
             if (processed == 0) log.info("Reconciliation started")
 
-            batch.forEach { transaction ->
-                try {
-                    reconcileTransaction(transaction)
-                } catch (e: Exception) {
-                    log.error("Reconciliation failed for transaction {}", transaction.id, e)
+            val futures =
+                batch.map { transaction ->
+                    CompletableFuture.runAsync(
+                        {
+                            try {
+                                reconcileTransaction(transaction)
+                            } catch (e: Exception) {
+                                log.error("Reconciliation failed for transaction {}", transaction.id, e)
+                            }
+                        },
+                        executor,
+                    )
                 }
-            }
+            CompletableFuture.allOf(*futures.toTypedArray()).join()
 
             processed += batch.size
         } while (batch.size == BATCH_SIZE)
@@ -72,7 +83,7 @@ class ReconciliationService(
             transactionService.markFailed(transaction, "Insufficient balance during reconciliation")
             log.warn("Reconciliation FAILED for DEBIT transaction {} — insufficient balance", transaction.id)
         } catch (e: PartnerNotFoundException) {
-            transactionService.markFailed(transaction, "Partner not found: ${transaction.partnerId}")
+            transactionService.markFailed(transaction, "Partner not found during reconciliation")
             log.warn("Reconciliation FAILED for transaction {} — partner not found", transaction.id)
         }
     }

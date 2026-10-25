@@ -10,26 +10,30 @@ abstract class ApiException(
 
 class PartnerNotFoundException(
     partnerId: UUID,
-) : ApiException("Partner not found: $partnerId", HttpStatus.NOT_FOUND)
+) : ApiException("Partner not found", HttpStatus.NOT_FOUND)
 
 class InsufficientBalanceException(
     partnerId: UUID,
-) : ApiException("Insufficient balance for partner: $partnerId", HttpStatus.UNPROCESSABLE_ENTITY)
+) : ApiException("Insufficient balance for partner", HttpStatus.UNPROCESSABLE_ENTITY)
 
 class DuplicateTransactionException(
     idempotencyKey: String,
-) : ApiException("Transaction already processed with key: $idempotencyKey", HttpStatus.CONFLICT)
+) : ApiException("Transaction already processed with the provided idempotency key", HttpStatus.CONFLICT)
 
 class TransactionNotFoundException(
     transactionId: UUID,
-) : ApiException("Transaction not found: $transactionId", HttpStatus.NOT_FOUND)
+) : ApiException("Transaction not found", HttpStatus.NOT_FOUND)
 
 class InvalidAmountException : ApiException("Amount must be greater than zero", HttpStatus.BAD_REQUEST)
 
+class InvalidIdempotencyKeyException(
+    reason: String,
+) : ApiException(reason, HttpStatus.BAD_REQUEST)
+
 class PartnerNotFoundByExternalIdException(
     externalId: String,
-) : ApiException("Partner not found with externalId: $externalId", HttpStatus.NOT_FOUND)
+) : ApiException("Partner not found with the provided external ID", HttpStatus.NOT_FOUND)
 
 class PartnerAlreadyExistsException(
     externalId: String,
-) : ApiException("Partner already exists with externalId: $externalId", HttpStatus.CONFLICT)
+) : ApiException("Partner already exists with the provided external ID", HttpStatus.CONFLICT)
