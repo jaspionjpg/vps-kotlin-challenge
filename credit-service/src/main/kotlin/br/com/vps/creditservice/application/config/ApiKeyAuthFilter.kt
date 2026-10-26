@@ -1,6 +1,7 @@
 package br.com.vps.creditservice.application.config
 
 import br.com.vps.creditservice.application.controller.response.GenericErrorResponse
+import br.com.vps.creditservice.resource.model.enums.EHttpHeader
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -16,8 +17,11 @@ class ApiKeyAuthFilter(
     private val apiKey: String,
     private val objectMapper: ObjectMapper,
 ) : OncePerRequestFilter() {
-    companion object {
-        private const val API_KEY_HEADER = "X-API-Key"
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean {
+        val path = request.requestURI
+        return path.startsWith("/actuator/") ||
+            path.startsWith("/swagger-ui/") ||
+            path.startsWith("/v3/api-docs")
     }
 
     override fun doFilterInternal(
@@ -25,7 +29,7 @@ class ApiKeyAuthFilter(
         response: HttpServletResponse,
         filterChain: FilterChain,
     ) {
-        val requestApiKey = request.getHeader(API_KEY_HEADER)
+        val requestApiKey = request.getHeader(EHttpHeader.API_KEY.headerName)
         if (requestApiKey == null ||
             !MessageDigest.isEqual(requestApiKey.toByteArray(), apiKey.toByteArray())
         ) {

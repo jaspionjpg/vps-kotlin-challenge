@@ -4,7 +4,7 @@ import br.com.vps.creditservice.domain.service.BalanceCacheService
 import br.com.vps.creditservice.domain.service.PartnerService
 import br.com.vps.creditservice.domain.service.TransactionService
 import br.com.vps.creditservice.resource.messaging.NotificationPublisher
-import br.com.vps.creditservice.resource.model.TransactionStatus
+import br.com.vps.creditservice.resource.model.enums.ETransactionStatus
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -115,7 +115,7 @@ class ConcurrencyTest {
             executor.submit {
                 try {
                     val result = transactionService.consumeCredit(partnerId, debitAmount, "Debit $i", "cd-$partnerId-$i")
-                    if (result.status == TransactionStatus.COMPLETED) successCount.incrementAndGet()
+                    if (result.status == ETransactionStatus.COMPLETED) successCount.incrementAndGet()
                 } catch (_: Exception) {
                 } finally {
                     latch.countDown()
@@ -149,7 +149,7 @@ class ConcurrencyTest {
             executor.submit {
                 try {
                     val r = transactionService.addCredit(partnerId, amount, "Credit $i", "mc-$partnerId-$i")
-                    if (r.status == TransactionStatus.COMPLETED) creditSuccess.incrementAndGet()
+                    if (r.status == ETransactionStatus.COMPLETED) creditSuccess.incrementAndGet()
                 } catch (_: Exception) {
                 } finally {
                     latch.countDown()
@@ -160,7 +160,7 @@ class ConcurrencyTest {
             executor.submit {
                 try {
                     val r = transactionService.consumeCredit(partnerId, amount, "Debit $i", "md-$partnerId-$i")
-                    if (r.status == TransactionStatus.COMPLETED) debitSuccess.incrementAndGet()
+                    if (r.status == ETransactionStatus.COMPLETED) debitSuccess.incrementAndGet()
                 } catch (_: Exception) {
                 } finally {
                     latch.countDown()

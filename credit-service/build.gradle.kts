@@ -48,7 +48,11 @@ dependencies {
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
 
-	// Actuator (health checks)
+	// Retry
+	implementation("org.springframework.retry:spring-retry")
+	implementation("org.springframework:spring-aspects")
+
+	// Actuator (health checks + metrics)
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 
 	// Test

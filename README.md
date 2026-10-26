@@ -14,7 +14,7 @@ Plataforma B2B de gestao de creditos para parceiros. Operacoes de credito e debi
 | Migrations  | Flyway                               |
 | Docs API    | SpringDoc OpenAPI 2.8.8 (Swagger UI) |
 | Build       | Gradle 8.14 (Kotlin DSL)             |
-| Container   | Docker multi-stage + docker-compose   |
+| Container   | Docker multi-stage + Docker Compose   |
 | Testes      | JUnit 5, Mockito-Kotlin, Testcontainers |
 
 ## Arquitetura
@@ -49,13 +49,15 @@ Cada service acessa apenas seu proprio repository. `TransactionService` opera tr
 
 **IDOR prevention** — Lookup de transacao por ID valida ownership do partner (`findByIdAndPartnerId`). Mensagens de erro nao expoe IDs internos.
 
-**Conciliacao** — Job `@Scheduled` (cron configuravel) reprocessa transacoes PENDING alem do timeout. Processamento paralelo via `CompletableFuture` com thread pool dedicado. ShedLock garante execucao unica em ambiente distribuido.
+**Conciliacao** — Job `@Scheduled` (cron configuravel) reprocessa transacoes PENDING alem do timeout. `FOR UPDATE SKIP LOCKED` garante que instancias concorrentes nao disputam as mesmas rows. Re-check de status apos lock previne double-processing. ShedLock garante execucao unica em ambiente distribuido.
 
 **Cache** — Redis read-through no saldo do parceiro. Evict on write. Fail-safe: erros de Redis nao propagam.
 
 **IDs** — UUID nativo do PostgreSQL com `gen_random_uuid()` como default. Entidades com `id: UUID? = null` + `@GeneratedValue` — JPA usa `persist()` para novas entidades, eliminando conflitos de merge sob concorrencia.
 
-**Notificacoes** — SNS publish assincrono (`@Async` com thread pool dedicado) para transacoes completadas. Fire-and-forget — falhas logadas sem propagar para o request. SQS queue subscrita ao topico para consumo futuro pelo `communication-service`.
+**Notificacoes** — SNS publish assincrono (`@Async` com thread pool dedicado) para transacoes completadas. Spring Retry com backoff exponencial (3 tentativas, 1s → 2s → 4s) antes de desistir. Falhas logadas sem propagar para o request. SQS queue subscrita ao topico para consumo futuro pelo `communication-service`.
+
+**Metricas** — Micrometer counter `transactions.processed` com tags `type` (CREDIT/DEBIT) e `status` (COMPLETED/FAILED). Endpoints `/actuator/metrics` e `/actuator/prometheus` expostos para integracao com ferramentas de observabilidade.
 
 **Performance** — JVM com ZGC Generational (sub-ms GC pauses) e container memory awareness. HikariCP tuned (20 max connections). Indice composto `(status, created_at)` para query de conciliacao. `subtractBalance` usa `findBalanceById` para disambiguar "not found" vs "insufficient balance" em single query.
 
@@ -96,13 +98,13 @@ Headers obrigatorios para credit/debit: `X-API-Key`, `Idempotency-Key`
 ### Subir tudo via Docker
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Subir com dados de demonstracao
 
 ```bash
-SPRING_PROFILES_ACTIVE=demo docker-compose up -d
+SPRING_PROFILES_ACTIVE=demo docker compose up -d
 ```
 
 O profile `demo` popula o banco com 3 parceiros e 12 transacoes de exemplo:
@@ -121,7 +123,7 @@ Servicos disponiveis:
 
 ```bash
 # Subir infra
-docker-compose up -d vps-db vps-redis localstack
+docker compose up -d vps-db vps-redis localstack
 
 # Rodar o servico
 cd credit-service && ./gradlew bootRun
@@ -153,18 +155,19 @@ Veja `.env.example` na raiz do projeto. Variaveis principais:
 
 - **Unit tests (73)** — Services, controllers (MockMvc), security (auth filter, endpoint protection), cache, notification publisher, exception handling. Isolados com Mockito.
 - **Integration tests (8)** — Concorrencia e idempotencia contra PostgreSQL real via Testcontainers:
-  - 20 creditos concorrentes: valida saldo final correto
-  - 20 debitos concorrentes com saldo de 100: valida que saldo nunca fica negativo
-  - 10 creditos + 10 debitos concorrentes: valida consistencia do saldo
+  - 20 threads de credito simultaneas no mesmo parceiro: valida que saldo final = soma exata dos creditos (sem race condition)
+  - 20 threads de debito simultaneas com saldo de R$100 e debitos de R$10: valida que exatamente 10 sucedem e saldo final = 0 (nunca negativo)
+  - 10 creditos + 10 debitos simultaneos (mixed workload): valida consistencia atomica do saldo sob carga concorrente
   - Idempotencia: requests duplicados retornam 409, requests concorrentes com mesma key nao geram duplicatas
+  - Estes testes exercitam o `UPDATE ... WHERE balance >= amount` atomico do PostgreSQL, provando que nao ha lost updates nem saldo negativo sob contencao real
 
 ## Estrutura do repositorio
 
 ```
 vps-kotlin-challenge/
-  docker-compose.yml
+  docker compose.yml
   .env.example
-  docker-compose/
+  docker compose/
     init/
       postgres-init.sql
       localstack-init.sh

@@ -56,6 +56,7 @@ services:
       context: ./credit-service
       dockerfile: Dockerfile
     container_name: credit-service
+    mem_limit: 768m
     ports:
       - "7200:7200"
     environment:

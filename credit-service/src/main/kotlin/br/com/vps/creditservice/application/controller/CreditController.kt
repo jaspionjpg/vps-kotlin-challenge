@@ -4,6 +4,9 @@ import br.com.vps.creditservice.application.controller.request.CreditRequest
 import br.com.vps.creditservice.application.controller.request.DebitRequest
 import br.com.vps.creditservice.application.controller.response.TransactionResponse
 import br.com.vps.creditservice.domain.service.TransactionService
+import br.com.vps.creditservice.resource.model.TransactionEntity
+import br.com.vps.creditservice.resource.model.enums.EHttpHeader
+import br.com.vps.creditservice.resource.model.enums.ETransactionStatus
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -32,31 +35,27 @@ class CreditController(
     @Operation(summary = "Add credits to a partner")
     fun addCredit(
         @PathVariable partnerId: UUID,
-        @RequestHeader("Idempotency-Key") @Parameter(description = "Unique key to prevent duplicate transactions") idempotencyKey: String,
+        @RequestHeader(EHttpHeader.IDEMPOTENCY_KEY_VALUE)
+        @Parameter(description = "Unique key to prevent duplicate transactions")
+        idempotencyKey: String,
         @Valid @RequestBody request: CreditRequest,
     ): ResponseEntity<TransactionResponse> =
-        ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(
-                TransactionResponse.from(
-                    transactionService.addCredit(partnerId, request.amount, request.description, idempotencyKey),
-                ),
-            )
+        transactionService.addCredit(partnerId, request.amount, request.description, idempotencyKey).let {
+            ResponseEntity.status(it.httpStatus()).body(TransactionResponse.from(it))
+        }
 
     @PostMapping("/debit")
     @Operation(summary = "Consume credits from a partner")
     fun consumeCredit(
         @PathVariable partnerId: UUID,
-        @RequestHeader("Idempotency-Key") @Parameter(description = "Unique key to prevent duplicate transactions") idempotencyKey: String,
+        @RequestHeader(EHttpHeader.IDEMPOTENCY_KEY_VALUE)
+        @Parameter(description = "Unique key to prevent duplicate transactions")
+        idempotencyKey: String,
         @Valid @RequestBody request: DebitRequest,
     ): ResponseEntity<TransactionResponse> =
-        ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(
-                TransactionResponse.from(
-                    transactionService.consumeCredit(partnerId, request.amount, request.description, idempotencyKey),
-                ),
-            )
+        transactionService.consumeCredit(partnerId, request.amount, request.description, idempotencyKey).let {
+            ResponseEntity.status(it.httpStatus()).body(TransactionResponse.from(it))
+        }
 
     @GetMapping
     @Operation(summary = "Get transaction history for a partner")
@@ -75,4 +74,7 @@ class CreditController(
         @PathVariable transactionId: UUID,
     ): ResponseEntity<TransactionResponse> =
         ResponseEntity.ok(TransactionResponse.from(transactionService.findByIdForPartner(transactionId, partnerId)))
+
+    private fun TransactionEntity.httpStatus(): HttpStatus =
+        if (status == ETransactionStatus.FAILED) HttpStatus.UNPROCESSABLE_ENTITY else HttpStatus.CREATED
 }

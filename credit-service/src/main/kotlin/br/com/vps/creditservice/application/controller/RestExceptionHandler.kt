@@ -8,6 +8,7 @@ import org.springframework.core.annotation.Order
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.ControllerAdvice
@@ -61,6 +62,21 @@ class RestExceptionHandler {
                 status = HttpStatus.BAD_REQUEST.value(),
                 error = "MissingHeader",
                 message = ex.message,
+                path = extractPath(request),
+            )
+        return ResponseEntity(response, HttpStatus.BAD_REQUEST)
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleHttpMessageNotReadable(
+        ex: HttpMessageNotReadableException,
+        request: WebRequest,
+    ): ResponseEntity<GenericErrorResponse> {
+        val response =
+            GenericErrorResponse(
+                status = HttpStatus.BAD_REQUEST.value(),
+                error = "MalformedRequest",
+                message = "Malformed or missing request body",
                 path = extractPath(request),
             )
         return ResponseEntity(response, HttpStatus.BAD_REQUEST)

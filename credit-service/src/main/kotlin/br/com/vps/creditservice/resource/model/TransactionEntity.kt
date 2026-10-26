@@ -1,5 +1,7 @@
 package br.com.vps.creditservice.resource.model
 
+import br.com.vps.creditservice.resource.model.enums.ETransactionStatus
+import br.com.vps.creditservice.resource.model.enums.ETransactionType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -30,7 +32,7 @@ class TransactionEntity(
     val partnerId: UUID,
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    val type: TransactionType,
+    val type: ETransactionType,
     @Column(nullable = false, precision = 19, scale = 4)
     val amount: BigDecimal,
     @Column(nullable = false)
@@ -39,7 +41,7 @@ class TransactionEntity(
     val idempotencyKey: String,
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    var status: TransactionStatus = TransactionStatus.PENDING,
+    var status: ETransactionStatus = ETransactionStatus.PENDING,
     @Column
     var failureReason: String? = null,
     @Column(nullable = false, updatable = false)

@@ -1,5 +1,6 @@
 package br.com.vps.creditservice.application.config
 
+import br.com.vps.creditservice.resource.model.enums.EHttpHeader
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Contact
@@ -30,7 +31,7 @@ class OpenApiConfig {
                     SecurityScheme()
                         .type(SecurityScheme.Type.APIKEY)
                         .`in`(SecurityScheme.In.HEADER)
-                        .name("X-API-Key"),
+                        .name(EHttpHeader.API_KEY.headerName),
                 ),
             ).addSecurityItem(SecurityRequirement().addList("ApiKeyAuth"))
 }

@@ -3,14 +3,16 @@ package br.com.vps.creditservice.domain.service
 import br.com.vps.creditservice.domain.exception.DuplicateTransactionException
 import br.com.vps.creditservice.domain.exception.InsufficientBalanceException
 import br.com.vps.creditservice.domain.exception.InvalidAmountException
+import br.com.vps.creditservice.domain.exception.InvalidIdempotencyKeyException
 import br.com.vps.creditservice.domain.exception.PartnerNotFoundException
 import br.com.vps.creditservice.domain.exception.TransactionNotFoundException
-import br.com.vps.creditservice.resource.messaging.NotificationPublisher
+import br.com.vps.creditservice.resource.messaging.TransactionEvent
 import br.com.vps.creditservice.resource.model.PartnerEntity
 import br.com.vps.creditservice.resource.model.TransactionEntity
-import br.com.vps.creditservice.resource.model.TransactionStatus
-import br.com.vps.creditservice.resource.model.TransactionType
+import br.com.vps.creditservice.resource.model.enums.ETransactionStatus
+import br.com.vps.creditservice.resource.model.enums.ETransactionType
 import br.com.vps.creditservice.resource.repositories.TransactionRepository
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -23,6 +25,7 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import java.math.BigDecimal
@@ -32,14 +35,15 @@ import java.util.UUID
 class TransactionServiceTest {
     private val transactionRepository: TransactionRepository = mock()
     private val partnerService: PartnerService = mock()
-    private val notificationPublisher: NotificationPublisher = mock()
+    private val eventPublisher: ApplicationEventPublisher = mock()
+    private val meterRegistry = SimpleMeterRegistry()
     private lateinit var transactionService: TransactionService
 
     private val partnerId = UUID.randomUUID()
 
     @BeforeEach
     fun setup() {
-        transactionService = TransactionService(transactionRepository, partnerService, notificationPublisher)
+        transactionService = TransactionService(transactionRepository, partnerService, eventPublisher, meterRegistry)
     }
 
     @Test
@@ -50,11 +54,11 @@ class TransactionServiceTest {
 
         val result = transactionService.addCredit(partnerId, BigDecimal("100.00"), "Sale payment", "key-1")
 
-        assertEquals(TransactionStatus.COMPLETED, result.status)
-        assertEquals(TransactionType.CREDIT, result.type)
+        assertEquals(ETransactionStatus.COMPLETED, result.status)
+        assertEquals(ETransactionType.CREDIT, result.type)
         assertEquals(BigDecimal("100.00"), result.amount)
         verify(partnerService).addBalance(partnerId, BigDecimal("100.00"))
-        verify(notificationPublisher).publish(any())
+        verify(eventPublisher).publishEvent(any<TransactionEvent>())
     }
 
     @Test
@@ -76,11 +80,11 @@ class TransactionServiceTest {
         val existing =
             TransactionEntity(
                 partnerId = partnerId,
-                type = TransactionType.CREDIT,
+                type = ETransactionType.CREDIT,
                 amount = BigDecimal("100.00"),
                 description = "Already done",
                 idempotencyKey = "key-1",
-                status = TransactionStatus.COMPLETED,
+                status = ETransactionStatus.COMPLETED,
             )
         whenever(transactionRepository.findByIdempotencyKey("key-1")).thenReturn(existing)
 
@@ -97,8 +101,8 @@ class TransactionServiceTest {
 
         val result = transactionService.consumeCredit(partnerId, BigDecimal("50.00"), "Service fee", "key-2")
 
-        assertEquals(TransactionStatus.COMPLETED, result.status)
-        assertEquals(TransactionType.DEBIT, result.type)
+        assertEquals(ETransactionStatus.COMPLETED, result.status)
+        assertEquals(ETransactionType.DEBIT, result.type)
         verify(partnerService).subtractBalance(partnerId, BigDecimal("50.00"))
     }
 
@@ -110,8 +114,8 @@ class TransactionServiceTest {
 
         val result = transactionService.consumeCredit(partnerId, BigDecimal("999.00"), "Too much", "key-3")
 
-        assertEquals(TransactionStatus.FAILED, result.status)
-        verify(notificationPublisher, never()).publish(any())
+        assertEquals(ETransactionStatus.FAILED, result.status)
+        verify(eventPublisher, never()).publishEvent(any<TransactionEvent>())
     }
 
     @Test
@@ -119,7 +123,7 @@ class TransactionServiceTest {
         val transaction =
             TransactionEntity(
                 partnerId = partnerId,
-                type = TransactionType.CREDIT,
+                type = ETransactionType.CREDIT,
                 amount = BigDecimal("10.00"),
                 description = "Test",
                 idempotencyKey = "key-4",
@@ -128,7 +132,7 @@ class TransactionServiceTest {
 
         val result = transactionService.markCompleted(transaction)
 
-        assertEquals(TransactionStatus.COMPLETED, result.status)
+        assertEquals(ETransactionStatus.COMPLETED, result.status)
     }
 
     @Test
@@ -136,7 +140,7 @@ class TransactionServiceTest {
         val transaction =
             TransactionEntity(
                 partnerId = partnerId,
-                type = TransactionType.DEBIT,
+                type = ETransactionType.DEBIT,
                 amount = BigDecimal("10.00"),
                 description = "Test",
                 idempotencyKey = "key-5",
@@ -145,7 +149,7 @@ class TransactionServiceTest {
 
         val result = transactionService.markFailed(transaction, "Some error")
 
-        assertEquals(TransactionStatus.FAILED, result.status)
+        assertEquals(ETransactionStatus.FAILED, result.status)
         assertEquals("Some error", result.failureReason)
     }
 
@@ -157,8 +161,8 @@ class TransactionServiceTest {
 
         val result = transactionService.addCredit(partnerId, BigDecimal("100.00"), "Ghost", "key-pnf")
 
-        assertEquals(TransactionStatus.FAILED, result.status)
-        verify(notificationPublisher, never()).publish(any())
+        assertEquals(ETransactionStatus.FAILED, result.status)
+        verify(eventPublisher, never()).publishEvent(any<TransactionEvent>())
     }
 
     @Test
@@ -169,8 +173,8 @@ class TransactionServiceTest {
 
         val result = transactionService.consumeCredit(partnerId, BigDecimal("50.00"), "Ghost", "key-dpnf")
 
-        assertEquals(TransactionStatus.FAILED, result.status)
-        verify(notificationPublisher, never()).publish(any())
+        assertEquals(ETransactionStatus.FAILED, result.status)
+        verify(eventPublisher, never()).publishEvent(any<TransactionEvent>())
     }
 
     @Test
@@ -179,7 +183,7 @@ class TransactionServiceTest {
         val transaction =
             TransactionEntity(
                 partnerId = partnerId,
-                type = TransactionType.CREDIT,
+                type = ETransactionType.CREDIT,
                 amount = BigDecimal("75.00"),
                 description = "Exists",
                 idempotencyKey = "key-find",
@@ -216,7 +220,7 @@ class TransactionServiceTest {
             listOf(
                 TransactionEntity(
                     partnerId = partnerId,
-                    type = TransactionType.CREDIT,
+                    type = ETransactionType.CREDIT,
                     amount = BigDecimal("50.00"),
                     description = "History",
                     idempotencyKey = "key-hist",
@@ -238,11 +242,11 @@ class TransactionServiceTest {
         val existing =
             TransactionEntity(
                 partnerId = partnerId,
-                type = TransactionType.CREDIT,
+                type = ETransactionType.CREDIT,
                 amount = BigDecimal("100.00"),
                 description = "Previously failed",
                 idempotencyKey = "key-retry",
-                status = TransactionStatus.FAILED,
+                status = ETransactionStatus.FAILED,
             )
         existing.failureReason = "Partner not found"
         whenever(transactionRepository.findByIdempotencyKey("key-retry")).thenReturn(existing)
@@ -250,5 +254,82 @@ class TransactionServiceTest {
         assertThrows<DuplicateTransactionException> {
             transactionService.addCredit(partnerId, BigDecimal("100.00"), "Retry", "key-retry")
         }
+    }
+
+    @Test
+    fun `addCredit should throw InvalidIdempotencyKeyException for blank key`() {
+        assertThrows<InvalidIdempotencyKeyException> {
+            transactionService.addCredit(partnerId, BigDecimal("100.00"), "Valid", "   ")
+        }
+    }
+
+    @Test
+    fun `addCredit should throw InvalidIdempotencyKeyException for key exceeding 64 characters`() {
+        val longKey = "a".repeat(65)
+
+        assertThrows<InvalidIdempotencyKeyException> {
+            transactionService.addCredit(partnerId, BigDecimal("100.00"), "Valid", longKey)
+        }
+    }
+
+    @Test
+    fun `consumeCredit should throw InvalidIdempotencyKeyException for blank key`() {
+        assertThrows<InvalidIdempotencyKeyException> {
+            transactionService.consumeCredit(partnerId, BigDecimal("50.00"), "Valid", "")
+        }
+    }
+
+    @Test
+    fun `findByIdForPartner should return transaction when exists`() {
+        val txId = UUID.randomUUID()
+        val transaction =
+            TransactionEntity(
+                partnerId = partnerId,
+                type = ETransactionType.CREDIT,
+                amount = BigDecimal("75.00"),
+                description = "Partner TX",
+                idempotencyKey = "key-partner",
+            )
+        whenever(transactionRepository.findByIdAndPartnerId(txId, partnerId)).thenReturn(transaction)
+
+        val result = transactionService.findByIdForPartner(txId, partnerId)
+
+        assertEquals("Partner TX", result.description)
+    }
+
+    @Test
+    fun `findByIdForPartner should throw TransactionNotFoundException when not exists`() {
+        val txId = UUID.randomUUID()
+        whenever(transactionRepository.findByIdAndPartnerId(txId, partnerId)).thenReturn(null)
+
+        assertThrows<TransactionNotFoundException> {
+            transactionService.findByIdForPartner(txId, partnerId)
+        }
+    }
+
+    @Test
+    fun `findPendingBefore should delegate to repository`() {
+        val cutoff =
+            java.time.OffsetDateTime
+                .now()
+                .minusMinutes(10)
+        val pageable = PageRequest.of(0, 100)
+        val pending =
+            listOf(
+                TransactionEntity(
+                    partnerId = partnerId,
+                    type = ETransactionType.CREDIT,
+                    amount = BigDecimal("50.00"),
+                    description = "Pending",
+                    idempotencyKey = "key-pending",
+                ),
+            )
+        whenever(transactionRepository.findPendingBefore(ETransactionStatus.PENDING, cutoff, pageable))
+            .thenReturn(pending)
+
+        val result = transactionService.findPendingBefore(cutoff, pageable)
+
+        assertEquals(1, result.size)
+        assertEquals("Pending", result[0].description)
     }
 }

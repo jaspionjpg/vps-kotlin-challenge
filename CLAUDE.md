@@ -12,7 +12,7 @@ Plataforma B2B de gestão de créditos para parceiros. Arquitetura multi-serviç
 - **Migrations:** Flyway
 - **Docs:** SpringDoc OpenAPI 2.8.8 (Swagger)
 - **Build:** Gradle 8.14 Kotlin DSL
-- **Container:** Docker multi-stage + docker-compose
+- **Container:** Docker multi-stage + Docker Compose
 
 ## Estrutura do Repositório
 ```
@@ -57,7 +57,7 @@ br.com.vps.creditservice/
 ## Comandos
 ```bash
 # Infra
-docker-compose up -d vps-db vps-redis localstack
+docker compose up -d vps-db vps-redis localstack
 
 # Build credit-service
 cd credit-service && ./gradlew build
@@ -66,7 +66,7 @@ cd credit-service && ./gradlew build
 cd credit-service && ./gradlew bootRun
 
 # Run tudo via Docker
-docker-compose up -d
+docker compose up -d
 
 # Testes
 cd credit-service && ./gradlew test
