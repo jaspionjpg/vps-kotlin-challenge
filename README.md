@@ -101,6 +101,8 @@ Headers obrigatorios para credit/debit: `X-API-Key`, `Idempotency-Key`
 docker compose up -d
 ```
 
+A API key default para desenvolvimento é `changeme-dev-only` (definida no `docker-compose.yml`). Use-a no header `X-API-Key` para autenticar as requests. Em produção, substitua por uma chave forte via variável de ambiente `API_KEY`.
+
 ### Subir com dados de demonstracao
 
 ```bash

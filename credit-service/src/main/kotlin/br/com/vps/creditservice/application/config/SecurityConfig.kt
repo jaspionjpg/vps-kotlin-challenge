@@ -29,7 +29,7 @@ class SecurityConfig(
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { auth ->
                 auth
-                    .requestMatchers("/actuator/health")
+                    .requestMatchers("/actuator/**")
                     .permitAll()
                     .requestMatchers("/swagger-ui/**")
                     .permitAll()
