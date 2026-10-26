@@ -1,13 +1,12 @@
 package br.com.vps.creditservice.resource.messaging
 
-import br.com.vps.creditservice.resource.model.TransactionStatus
-import br.com.vps.creditservice.resource.model.TransactionType
+import br.com.vps.creditservice.resource.model.enums.ETransactionStatus
+import br.com.vps.creditservice.resource.model.enums.ETransactionType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import software.amazon.awssdk.services.sns.SnsClient
@@ -29,37 +28,37 @@ class NotificationPublisherTest {
         publisher = NotificationPublisher(snsClient, objectMapper, topicArn)
     }
 
-    private fun createEvent(type: TransactionType = TransactionType.CREDIT) =
+    private fun createEvent(type: ETransactionType = ETransactionType.CREDIT) =
         TransactionEvent(
             transactionId = UUID.randomUUID(),
             partnerId = UUID.randomUUID(),
             type = type,
             amount = BigDecimal("100.00"),
-            status = TransactionStatus.COMPLETED,
+            status = ETransactionStatus.COMPLETED,
             description = "Test event",
             timestamp = OffsetDateTime.now(),
         )
 
     @Test
-    fun `publish should send message to SNS with correct topic ARN`() {
+    fun `publishWithRetry should send message to SNS with correct topic ARN`() {
         val event = createEvent()
         whenever(snsClient.publish(any<PublishRequest>())).thenReturn(
             PublishResponse.builder().messageId("msg-123").build(),
         )
 
-        publisher.publish(event)
+        publisher.publishWithRetry(event)
 
         verify(snsClient).publish(argThat<PublishRequest> { topicArn() == this@NotificationPublisherTest.topicArn })
     }
 
     @Test
-    fun `publish should include TRANSACTION_CREDIT event type attribute for credit`() {
-        val event = createEvent(TransactionType.CREDIT)
+    fun `publishWithRetry should include TRANSACTION_CREDIT event type attribute for credit`() {
+        val event = createEvent(ETransactionType.CREDIT)
         whenever(snsClient.publish(any<PublishRequest>())).thenReturn(
             PublishResponse.builder().messageId("msg-123").build(),
         )
 
-        publisher.publish(event)
+        publisher.publishWithRetry(event)
 
         verify(snsClient).publish(
             argThat<PublishRequest> {
@@ -69,13 +68,13 @@ class NotificationPublisherTest {
     }
 
     @Test
-    fun `publish should include TRANSACTION_DEBIT event type attribute for debit`() {
-        val event = createEvent(TransactionType.DEBIT)
+    fun `publishWithRetry should include TRANSACTION_DEBIT event type attribute for debit`() {
+        val event = createEvent(ETransactionType.DEBIT)
         whenever(snsClient.publish(any<PublishRequest>())).thenReturn(
             PublishResponse.builder().messageId("msg-123").build(),
         )
 
-        publisher.publish(event)
+        publisher.publishWithRetry(event)
 
         verify(snsClient).publish(
             argThat<PublishRequest> {
@@ -85,23 +84,30 @@ class NotificationPublisherTest {
     }
 
     @Test
-    fun `publish should not throw when SNS fails`() {
+    fun `publishWithRetry should throw on SNS failure for retry mechanism`() {
         val event = createEvent()
         whenever(snsClient.publish(any<PublishRequest>())).thenThrow(RuntimeException("SNS unavailable"))
 
-        publisher.publish(event)
-
-        verify(snsClient).publish(any<PublishRequest>())
+        org.junit.jupiter.api.assertThrows<RuntimeException> {
+            publisher.publishWithRetry(event)
+        }
     }
 
     @Test
-    fun `publish should not throw when serialization fails`() {
-        val brokenMapper: ObjectMapper = mock()
-        whenever(brokenMapper.writeValueAsString(any())).thenThrow(RuntimeException("Serialization error"))
-        val brokenPublisher = NotificationPublisher(snsClient, brokenMapper, topicArn)
+    fun `recover should not throw`() {
+        val event = createEvent()
+        publisher.recover(RuntimeException("All retries exhausted"), event)
+    }
 
-        brokenPublisher.publish(createEvent())
+    @Test
+    fun `onTransactionEvent should delegate to publishWithRetry`() {
+        val event = createEvent()
+        whenever(snsClient.publish(any<PublishRequest>())).thenReturn(
+            PublishResponse.builder().messageId("msg-123").build(),
+        )
 
-        verify(snsClient, never()).publish(any<PublishRequest>())
+        publisher.onTransactionEvent(event)
+
+        verify(snsClient).publish(any<PublishRequest>())
     }
 }

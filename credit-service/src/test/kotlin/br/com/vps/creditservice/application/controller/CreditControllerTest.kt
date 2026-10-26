@@ -2,12 +2,13 @@ package br.com.vps.creditservice.application.controller
 
 import br.com.vps.creditservice.domain.exception.DuplicateTransactionException
 import br.com.vps.creditservice.domain.exception.InsufficientBalanceException
+import br.com.vps.creditservice.domain.exception.InvalidIdempotencyKeyException
 import br.com.vps.creditservice.domain.exception.PartnerNotFoundException
 import br.com.vps.creditservice.domain.exception.TransactionNotFoundException
 import br.com.vps.creditservice.domain.service.TransactionService
 import br.com.vps.creditservice.resource.model.TransactionEntity
-import br.com.vps.creditservice.resource.model.TransactionStatus
-import br.com.vps.creditservice.resource.model.TransactionType
+import br.com.vps.creditservice.resource.model.enums.ETransactionStatus
+import br.com.vps.creditservice.resource.model.enums.ETransactionType
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
@@ -43,11 +44,11 @@ class CreditControllerTest {
         val transaction =
             TransactionEntity(
                 partnerId = partnerId,
-                type = TransactionType.CREDIT,
+                type = ETransactionType.CREDIT,
                 amount = BigDecimal("100.00"),
                 description = "Sale",
                 idempotencyKey = "key-1",
-                status = TransactionStatus.COMPLETED,
+                status = ETransactionStatus.COMPLETED,
             )
         whenever(transactionService.addCredit(eq(partnerId), any(), any(), eq("key-1"))).thenReturn(transaction)
 
@@ -105,11 +106,11 @@ class CreditControllerTest {
         val transaction =
             TransactionEntity(
                 partnerId = partnerId,
-                type = TransactionType.DEBIT,
+                type = ETransactionType.DEBIT,
                 amount = BigDecimal("50.00"),
                 description = "Fee",
                 idempotencyKey = "key-2",
-                status = TransactionStatus.COMPLETED,
+                status = ETransactionStatus.COMPLETED,
             )
         whenever(transactionService.consumeCredit(eq(partnerId), any(), any(), eq("key-2"))).thenReturn(transaction)
 
@@ -145,19 +146,19 @@ class CreditControllerTest {
             listOf(
                 TransactionEntity(
                     partnerId = partnerId,
-                    type = TransactionType.CREDIT,
+                    type = ETransactionType.CREDIT,
                     amount = BigDecimal("100.00"),
                     description = "Credit 1",
                     idempotencyKey = "k1",
-                    status = TransactionStatus.COMPLETED,
+                    status = ETransactionStatus.COMPLETED,
                 ),
                 TransactionEntity(
                     partnerId = partnerId,
-                    type = TransactionType.DEBIT,
+                    type = ETransactionType.DEBIT,
                     amount = BigDecimal("30.00"),
                     description = "Debit 1",
                     idempotencyKey = "k2",
-                    status = TransactionStatus.COMPLETED,
+                    status = ETransactionStatus.COMPLETED,
                 ),
             )
         whenever(transactionService.getTransactionHistory(eq(partnerId), any()))
@@ -174,11 +175,11 @@ class CreditControllerTest {
         val transaction =
             TransactionEntity(
                 partnerId = partnerId,
-                type = TransactionType.CREDIT,
+                type = ETransactionType.CREDIT,
                 amount = BigDecimal("75.00"),
                 description = "Specific",
                 idempotencyKey = "k-specific",
-                status = TransactionStatus.COMPLETED,
+                status = ETransactionStatus.COMPLETED,
             )
         whenever(transactionService.findByIdForPartner(txId1, partnerId)).thenReturn(transaction)
 
@@ -265,5 +266,59 @@ class CreditControllerTest {
                     .content("""{"amount": 50.00, "description": ""}"""),
             ).andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.error").value("ValidationError"))
+    }
+
+    @Test
+    fun `POST credit should return 400 when amount is missing`() {
+        mockMvc
+            .perform(
+                post("/partners/$partnerId/transactions/credit")
+                    .header("Idempotency-Key", "key-no-amount")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"description": "No amount"}"""),
+            ).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `POST credit should return 400 for invalid idempotency key`() {
+        whenever(transactionService.addCredit(any(), any(), any(), any()))
+            .thenThrow(InvalidIdempotencyKeyException("Idempotency key must not be blank"))
+
+        mockMvc
+            .perform(
+                post("/partners/$partnerId/transactions/credit")
+                    .header("Idempotency-Key", "   ")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"amount": 100.00, "description": "Test"}"""),
+            ).andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error").value("InvalidIdempotencyKeyException"))
+    }
+
+    @Test
+    fun `POST credit should return 400 when description exceeds 500 characters`() {
+        val longDesc = "a".repeat(501)
+        mockMvc
+            .perform(
+                post("/partners/$partnerId/transactions/credit")
+                    .header("Idempotency-Key", "key-long-desc")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"amount": 100.00, "description": "$longDesc"}"""),
+            ).andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error").value("ValidationError"))
+    }
+
+    @Test
+    fun `POST credit should return 404 when partner not found`() {
+        whenever(transactionService.addCredit(any(), any(), any(), any()))
+            .thenThrow(PartnerNotFoundException(partnerId))
+
+        mockMvc
+            .perform(
+                post("/partners/$partnerId/transactions/credit")
+                    .header("Idempotency-Key", "key-pnf")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"amount": 100.00, "description": "Ghost"}"""),
+            ).andExpect(status().isNotFound)
+            .andExpect(jsonPath("$.error").value("PartnerNotFoundException"))
     }
 }

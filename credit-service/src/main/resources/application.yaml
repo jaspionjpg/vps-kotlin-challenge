@@ -2,6 +2,8 @@ server:
   port: 7200
 
 spring:
+  autoconfigure:
+    exclude: io.awspring.cloud.autoconfigure.sqs.SqsAutoConfiguration
   application:
     name: credit-service
   datasource:
@@ -43,7 +45,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,metrics,prometheus
   endpoint:
     health:
       show-details: never

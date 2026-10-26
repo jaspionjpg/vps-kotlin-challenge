@@ -2,8 +2,12 @@ package br.com.vps.creditservice.resource.messaging
 
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.retry.annotation.Backoff
+import org.springframework.retry.annotation.Recover
+import org.springframework.retry.annotation.Retryable
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
+import org.springframework.transaction.event.TransactionalEventListener
 import software.amazon.awssdk.services.sns.SnsClient
 import software.amazon.awssdk.services.sns.model.MessageAttributeValue
 import software.amazon.awssdk.services.sns.model.PublishRequest
@@ -18,22 +22,39 @@ class NotificationPublisher(
     private val log = LoggerFactory.getLogger(NotificationPublisher::class.java)
 
     @Async("notificationExecutor")
-    fun publish(event: TransactionEvent) {
-        try {
-            val message = objectMapper.writeValueAsString(event)
-            val request =
-                PublishRequest
-                    .builder()
-                    .topicArn(topicArn)
-                    .message(message)
-                    .messageAttributes(buildAttributes(event))
-                    .build()
+    @TransactionalEventListener
+    fun onTransactionEvent(event: TransactionEvent) {
+        publishWithRetry(event)
+    }
 
-            val response = snsClient.publish(request)
-            log.info("Published transaction event {} to SNS, messageId={}", event.transactionId, response.messageId())
-        } catch (e: Exception) {
-            log.error("Failed to publish transaction event {} to SNS", event.transactionId, e)
-        }
+    @Retryable(
+        maxAttempts = 3,
+        backoff = Backoff(delay = 1000, multiplier = 2.0),
+    )
+    fun publishWithRetry(event: TransactionEvent) {
+        val message = objectMapper.writeValueAsString(event)
+        val request =
+            PublishRequest
+                .builder()
+                .topicArn(topicArn)
+                .message(message)
+                .messageAttributes(buildAttributes(event))
+                .build()
+
+        val response = snsClient.publish(request)
+        log.info("Published transaction event {} to SNS, messageId={}", event.transactionId, response.messageId())
+    }
+
+    @Recover
+    fun recover(
+        e: Exception,
+        event: TransactionEvent,
+    ) {
+        log.error(
+            "Failed to publish transaction event {} to SNS after retries",
+            event.transactionId,
+            e,
+        )
     }
 
     private fun buildAttributes(event: TransactionEvent): Map<String, MessageAttributeValue> =

@@ -1,0 +1,861 @@
+{
+	"info": {
+		"name": "VPS Credit Platform",
+		"description": "Plataforma B2B de gestao de creditos para parceiros.\n\n## Como usar\n\n1. Importe esta collection no Postman\n2. Suba os servicos: `docker compose up -d`\n3. Execute as requests na ordem das pastas\n4. A variavel `partnerId` e preenchida automaticamente ao criar um parceiro\n5. A variavel `transactionId` e preenchida automaticamente ao criar uma transacao",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:7200"
+		},
+		{
+			"key": "apiKey",
+			"value": "changeme-dev-only"
+		},
+		{
+			"key": "partnerId",
+			"value": ""
+		},
+		{
+			"key": "transactionId",
+			"value": ""
+		}
+	],
+	"auth": {
+		"type": "apikey",
+		"apikey": [
+			{
+				"key": "key",
+				"value": "X-API-Key",
+				"type": "string"
+			},
+			{
+				"key": "value",
+				"value": "{{apiKey}}",
+				"type": "string"
+			},
+			{
+				"key": "in",
+				"value": "header",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/actuator/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["actuator", "health"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Service is healthy', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.status).to.eql('UP');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "1. Partners",
+			"item": [
+				{
+					"name": "Criar parceiro",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"externalId\": \"PARTNER-001\",\n    \"name\": \"Empresa Teste\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/partners",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Partner created (201)', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Save partnerId', function () {",
+									"    var json = pm.response.json();",
+									"    pm.collectionVariables.set('partnerId', json.id);",
+									"    pm.expect(json.externalId).to.eql('PARTNER-001');",
+									"    pm.expect(json.balance).to.eql(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Consultar parceiro",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Partner found (200)', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.eql(pm.collectionVariables.get('partnerId'));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Consultar saldo",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/balance",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "balance"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Balance returned (200)', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.balance).to.be.a('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Parceiro duplicado (409)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"externalId\": \"PARTNER-001\",\n    \"name\": \"Duplicado\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/partners",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Duplicate partner rejected (409)', function () {",
+									"    pm.response.to.have.status(409);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Parceiro inexistente (404)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/partners/00000000-0000-0000-0000-000000000000",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "00000000-0000-0000-0000-000000000000"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Partner not found (404)', function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "2. Transactions - Credit",
+			"item": [
+				{
+					"name": "Adicionar credito R$1000",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Idempotency-Key",
+								"value": "credit-001"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 1000.00,\n    \"description\": \"Carga inicial de creditos\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/transactions/credit",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "transactions", "credit"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Credit created (201)', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Transaction is COMPLETED', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.type).to.eql('CREDIT');",
+									"    pm.expect(json.status).to.eql('COMPLETED');",
+									"    pm.expect(json.amount).to.eql(1000.0);",
+									"    pm.collectionVariables.set('transactionId', json.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Verificar saldo = 1000",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/balance",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "balance"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Balance is 1000', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.balance).to.eql(1000.0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Idempotencia — mesma key (409)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Idempotency-Key",
+								"value": "credit-001"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 1000.00,\n    \"description\": \"Tentativa duplicada\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/transactions/credit",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "transactions", "credit"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Duplicate rejected (409)', function () {",
+									"    pm.response.to.have.status(409);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Verificar saldo nao mudou = 1000",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/balance",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "balance"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Balance unchanged after idempotency reject', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.balance).to.eql(1000.0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "3. Transactions - Debit",
+			"item": [
+				{
+					"name": "Consumir credito R$250",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Idempotency-Key",
+								"value": "debit-001"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 250.00,\n    \"description\": \"Consumo de servico X\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/transactions/debit",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "transactions", "debit"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Debit created (201)', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Transaction is COMPLETED DEBIT', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.type).to.eql('DEBIT');",
+									"    pm.expect(json.status).to.eql('COMPLETED');",
+									"    pm.expect(json.amount).to.eql(250.0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Verificar saldo = 750",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/balance",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "balance"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Balance is 750 after debit', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.balance).to.eql(750.0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Saldo insuficiente (422)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Idempotency-Key",
+								"value": "debit-big"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 99999.00,\n    \"description\": \"Debito maior que saldo\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/transactions/debit",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "transactions", "debit"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Insufficient balance (422)', function () {",
+									"    pm.response.to.have.status(422);",
+									"});",
+									"",
+									"pm.test('Transaction status is FAILED', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.status).to.eql('FAILED');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Verificar saldo nao mudou = 750",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/balance",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "balance"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Balance unchanged after failed debit', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.balance).to.eql(750.0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "4. Transaction History",
+			"item": [
+				{
+					"name": "Historico paginado",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/transactions?page=0&size=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "transactions"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('History returned (200)', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Has transactions', function () {",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.content.length).to.be.greaterThan(0);",
+									"    pm.expect(json.totalElements).to.be.greaterThan(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Detalhe da transacao",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/transactions/{{transactionId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "transactions", "{{transactionId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Transaction found (200)', function () {",
+									"    pm.response.to.have.status(200);",
+									"    var json = pm.response.json();",
+									"    pm.expect(json.id).to.eql(pm.collectionVariables.get('transactionId'));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "5. Validations",
+			"item": [
+				{
+					"name": "Amount zero (400)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Idempotency-Key",
+								"value": "val-001"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 0,\n    \"description\": \"Valor invalido\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/transactions/credit",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "transactions", "credit"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Zero amount rejected (400)', function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Description vazia (400)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Idempotency-Key",
+								"value": "val-002"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 10.00,\n    \"description\": \"\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/transactions/credit",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "transactions", "credit"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Empty description rejected (400)', function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Body malformado (400)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Idempotency-Key",
+								"value": "val-003"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{invalid json}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/transactions/credit",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "transactions", "credit"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Malformed body rejected (400)', function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Amount negativo (400)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Idempotency-Key",
+								"value": "val-004"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": -50.00,\n    \"description\": \"Valor negativo\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}/transactions/credit",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}", "transactions", "credit"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Negative amount rejected (400)', function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "6. Security",
+			"item": [
+				{
+					"name": "Sem API key (401)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Missing API key (401)', function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "API key errada (401)",
+					"request": {
+						"auth": {
+							"type": "apikey",
+							"apikey": [
+								{
+									"key": "key",
+									"value": "X-API-Key",
+									"type": "string"
+								},
+								{
+									"key": "value",
+									"value": "chave-errada",
+									"type": "string"
+								},
+								{
+									"key": "in",
+									"value": "header",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/partners/{{partnerId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "{{partnerId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Wrong API key (401)', function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "IDOR — transacao de outro partner (404)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/partners/00000000-0000-0000-0000-000000000000/transactions/{{transactionId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["partners", "00000000-0000-0000-0000-000000000000", "transactions", "{{transactionId}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('IDOR prevented — wrong partner gets 404', function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}

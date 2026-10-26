@@ -1,8 +1,8 @@
 package br.com.vps.creditservice.application.controller.response
 
 import br.com.vps.creditservice.resource.model.TransactionEntity
-import br.com.vps.creditservice.resource.model.TransactionStatus
-import br.com.vps.creditservice.resource.model.TransactionType
+import br.com.vps.creditservice.resource.model.enums.ETransactionStatus
+import br.com.vps.creditservice.resource.model.enums.ETransactionType
 import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -10,11 +10,11 @@ import java.util.UUID
 data class TransactionResponse(
     val id: UUID?,
     val partnerId: UUID,
-    val type: TransactionType,
+    val type: ETransactionType,
     val amount: BigDecimal,
     val description: String,
     val idempotencyKey: String,
-    val status: TransactionStatus,
+    val status: ETransactionStatus,
     val failureReason: String?,
     val createdAt: OffsetDateTime,
     val updatedAt: OffsetDateTime,

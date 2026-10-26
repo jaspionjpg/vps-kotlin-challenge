@@ -48,7 +48,6 @@ class PartnerService(
         )
     }
 
-    @Transactional
     fun addBalance(
         partnerId: UUID,
         amount: BigDecimal,
@@ -58,7 +57,6 @@ class PartnerService(
         balanceCacheService.evict(partnerId)
     }
 
-    @Transactional
     fun subtractBalance(
         partnerId: UUID,
         amount: BigDecimal,
